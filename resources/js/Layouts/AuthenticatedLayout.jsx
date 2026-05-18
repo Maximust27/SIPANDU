@@ -28,8 +28,8 @@ export default function AuthenticatedLayout({ header, children }) {
         { name: 'Dashboard', routeName: 'dashboard', icon: <LayoutDashboard size={20} /> },
         { name: 'Anak & Pertumbuhan', routeName: 'Children.index', icon: <Baby size={20} /> },
         { name: 'Imunisasi & Jadwal', routeName: 'immunization.index', icon: <Calendar size={20} /> },
-        { name: 'AI Health Assistant', routeName: '#', icon: <Sparkles size={20} /> },
-        { name: 'Edukasi Kesehatan', routeName: '#', icon: <FileText size={20} /> },
+        { name: 'AI Health Assistant', routeName: 'ai-assistant.index', icon: <Sparkles size={20} /> },
+        { name: 'Edukasi Kesehatan', routeName: 'education.index', icon: <FileText size={20} /> },
     ];
 
     return (

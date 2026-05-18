@@ -9,10 +9,10 @@ import {
   Stethoscope, 
   ShieldCheck, 
   ArrowRight, 
-  Sparkles 
+  Sparkles,
+  LayoutDashboard
 } from 'lucide-react';
 
-// Import layout dan komponen asli dari Laravel Breeze / Inertia
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 
@@ -55,9 +55,14 @@ export default function Dashboard({ auth }) {
     return (
         <AuthenticatedLayout
             header={
-                <h2 className="text-xl font-bold leading-tight text-gray-900">
-                    Dashboard Pemantauan
-                </h2>
+                <div className="flex items-center gap-3">
+                    <div className="bg-violet-100 p-2 rounded-xl text-violet-600">
+                        <LayoutDashboard size={22} />
+                    </div>
+                    <h2 className="text-xl font-bold leading-tight text-gray-900">
+                        Dashboard Pemantauan
+                    </h2>
+                </div>
             }
         >
             <Head title="Dashboard" />
