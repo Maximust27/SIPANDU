@@ -1,11 +1,19 @@
 import React, { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { 
-  Users, Activity, CalendarDays, Sparkles, 
-  Settings, LogOut, Menu, X, Heart, LayoutDashboard 
+  Users, 
+  Activity, 
+  CalendarDays, 
+  Sparkles, 
+  Settings, 
+  LogOut, 
+  Menu, 
+  X, 
+  Heart, 
+  LayoutDashboard,
 } from 'lucide-react';
 
-export default function KaderLayout({ headerTitle, children }) {
+export default function KaderLayout({ headerTitle, headerIcon, children }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     
     // Mengambil data user yang sedang login dari Laravel
@@ -15,10 +23,10 @@ export default function KaderLayout({ headerTitle, children }) {
     // Sesuaikan nama rute (routeName) dengan yang ada di web.php
     const navItems = [
         { name: 'Dashboard', routeName: 'kader.dashboard', icon: <LayoutDashboard size={20} /> },
-        { name: 'Data Anak & Ortu', routeName: '#', icon: <Users size={20} /> },
-        { name: 'Monitoring Pertumbuhan', routeName: '#', icon: <Activity size={20} /> },
-        { name: 'Jadwal & Antrian', routeName: '#', icon: <CalendarDays size={20} /> },
-        { name: 'AI Monitoring', routeName: '#', icon: <Sparkles size={20} /> },
+        { name: 'Data Anak & Ortu', routeName: 'kader.children.index', icon: <Users size={20} /> },
+        { name: 'Monitoring Pertumbuhan', routeName: 'kader.growth-monitoring.index', icon: <Activity size={20} /> },
+        { name: 'Jadwal & Antrian', routeName: 'kader.schedule.index', icon: <CalendarDays size={20} /> },
+        { name: 'AI Monitoring', routeName: 'kader.ai-monitoring.index', icon: <Sparkles size={20} /> },
     ];
 
     return (
@@ -119,8 +127,9 @@ export default function KaderLayout({ headerTitle, children }) {
                         </button>
                         
                         <div className="hidden sm:flex items-center gap-3">
+                            {/* PERBAIKAN: Merender headerIcon dinamis dari props halaman pemanggil */}
                             <div className="bg-emerald-100 p-2 rounded-xl text-emerald-600">
-                                <LayoutDashboard size={20} />
+                                {headerIcon || <LayoutDashboard size={20} />}
                             </div>
                             <h2 className="text-xl font-bold leading-tight text-gray-900">
                                 {headerTitle}

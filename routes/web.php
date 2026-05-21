@@ -16,13 +16,21 @@ use App\Http\Controllers\User\ImmunizationController;
 use App\Http\Controllers\User\AIAssistantController;
 use App\Http\Controllers\User\EducationController;
 
-// --- Nanti Abang bisa tambahkan Controller Kader & Admin di sini ---
-// use App\Http\Controllers\Kader\KaderDashboardController;
-// use App\Http\Controllers\Admin\AdminDashboardController;
+// --- Kader Controllers ---
+use App\Http\Controllers\Kader\DashboardController as KaderDashboardController;
+use App\Http\Controllers\Kader\ChildController as KaderChildController;
+use App\Http\Controllers\Kader\GrowthMonitoringController as KaderGrowthMonitoringController;
+use App\Http\Controllers\Kader\ScheduleQueueController;
+use App\Http\Controllers\Kader\AIMonitoringController;
 
+// --- Admin Controllers ---
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\Admin\PosyanduManagementController;
+use App\Http\Controllers\Admin\ReportsController;
 
 // =========================================================================
-// PUBLIC ROUTES (Belum Login)
+// PUBLIC ROUTES
 // =========================================================================
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -35,7 +43,7 @@ Route::get('/', function () {
 
 
 // =========================================================================
-// GENERAL AUTH ROUTES (Bisa diakses Semua Role: Admin, Kader, User)
+// GENERAL AUTH ROUTES (Bisa diakses Semua Role)
 // =========================================================================
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -72,37 +80,52 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // =========================================================================
 // ROLE: KADER
 // =========================================================================
-// Semua URL otomatis berawalan /kader/ (contoh: /kader/dashboard)
-// Semua Name otomatis berawalan kader. (contoh: kader.dashboard)
 Route::prefix('kader')->name('kader.')->middleware(['auth', 'verified'])->group(function () {
     
     // Dashboard Kader
     Route::get('/dashboard', function () {
-        // Asumsi file React Kader ada di resources/js/Pages/Kader/Dashboard.jsx
         return Inertia::render('Kader/Dashboard'); 
     })->name('dashboard');
 
-    // Nanti rute kader lainnya taruh di sini
-    // Route::get('/data-balita', ...)->name('balita.index');
+    // Kelola Data Anak & Orang Tua (Menghubungkan ke file Canvas kader/children-management.jsx)
+    Route::get('/data-anak', [KaderChildController::class, 'index'])->name('children.index');
+    Route::post('/data-anak/simpan', [KaderChildController::class, 'store'])->name('children.store');
+    Route::post('/data-anak/update/{id}', [KaderChildController::class, 'update'])->name('children.update');
+    Route::post('/data-anak/verifikasi/{id}', [KaderChildController::class, 'verify'])->name('children.verify');
 
+    // Kelola Pemantauan Pertumbuhan (Menghubungkan ke file Canvas kader/growth-monitoring.jsx)
+    Route::get('/pemantauan-pertumbuhan', [KaderGrowthMonitoringController::class, 'index'])->name('growth-monitoring.index');
+    
+    
+    Route::get('/jadwal-antrian', [ScheduleQueueController::class, 'index'])->name('schedule.index');
+
+    Route::get('/ai-monitoring', [AIMonitoringController::class, 'index'])->name('ai-monitoring.index');
 });
 
 
 // =========================================================================
 // ROLE: ADMIN
 // =========================================================================
-// Semua URL otomatis berawalan /admin/
-// Semua Name otomatis berawalan admin.
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(function () {
     
     // Dashboard Admin
-    Route::get('/dashboard', function () {
-        // Asumsi file React Admin ada di resources/js/Pages/Admin/Dashboard.jsx
-        return Inertia::render('Admin/Dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
-    // Nanti rute admin lainnya taruh di sini
-    // Route::get('/kelola-kader', ...)->name('kader.manage');
+    // Kelola Akun Pengguna
+    Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
+    Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
+    Route::put('/users/{id}', [UserManagementController::class, 'update'])->name('users.update');
+    Route::delete('/users/{id}', [UserManagementController::class, 'destroy'])->name('users.destroy');
+    
+    // Aksi Tambahan Akun
+    Route::patch('/users/{id}/toggle-status', [UserManagementController::class, 'toggleStatus'])->name('users.toggle-status');
+    Route::post('/users/{id}/reset-password', [UserManagementController::class, 'resetPassword'])->name('users.reset-password');
+
+    // Kelola Posyandu
+    Route::get('/posyandu', [PosyanduManagementController::class, 'index'])->name('posyandu.index');
+
+    // Laporan & Statistik
+    Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
 
 });
 
