@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Head } from '@inertiajs/react';
+import React, { useState, useEffect } from 'react';
+import { Head, router } from '@inertiajs/react';
 import KaderLayout from '@/Layouts/KaderLayout';
 import { 
   Users, 
@@ -27,7 +27,20 @@ export default function ChildrenManagement({ initialChildren }) {
   const [selectedStatus, setSelectedStatus] = useState('Semua');
   
   // States Detail & Modal
-  const [activeChild, setActiveChild] = useState(children[0] || null);
+  const [activeChild, setActiveChild] = useState(null);
+
+  // Synchronize local state with props from server
+  useEffect(() => {
+    const childrenList = initialChildren || [];
+    setChildren(childrenList);
+    if (activeChild) {
+      const updatedActive = childrenList.find(c => c.id === activeChild.id);
+      setActiveChild(updatedActive || childrenList[0] || null);
+    } else if (childrenList.length > 0) {
+      setActiveChild(childrenList[0]);
+    }
+  }, [initialChildren]);
+
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -53,10 +66,11 @@ export default function ChildrenManagement({ initialChildren }) {
 
   // --- FILTER LOGIC ---
   const filteredChildren = children.filter(child => {
+    const motherNameVal = child.mother_name || child.motherName;
     const matchesSearch = 
       child.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      child.nik.includes(searchQuery) ||
-      (child.motherName && child.motherName.toLowerCase().includes(searchQuery.toLowerCase()));
+      (child.nik && child.nik.includes(searchQuery)) ||
+      (motherNameVal && motherNameVal.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesGender = selectedGender === 'Semua' || child.gender === selectedGender;
     const matchesStatus = selectedStatus === 'Semua' || child.status === selectedStatus;
@@ -98,69 +112,47 @@ export default function ChildrenManagement({ initialChildren }) {
 
   const handleSaveChild = (e) => {
     e.preventDefault();
+    const payload = {
+      nik: formState.nik || null,
+      name: formState.name,
+      gender: formState.gender,
+      birth_date: formState.birthDate,
+      father_name: formState.fatherName || null,
+      mother_name: formState.motherName,
+      phone: formState.phone,
+      address: formState.address || null
+    };
+
     if (isEditMode) {
-      const updatedList = children.map(c => {
-        if (c.id === formState.id) {
-          return {
-            ...c,
-            ...formState,
-            ageStr: 'Diperbarui'
-          };
+      router.put(route('kader.children.update', formState.id), payload, {
+        onSuccess: () => {
+          setIsAddModalOpen(false);
+          showToast('Data Anak berhasil diperbarui!');
         }
-        return c;
       });
-      setChildren(updatedList);
-      showToast('Data Anak berhasil diperbarui!');
     } else {
-      const newChild = {
-        id: Date.now(),
-        ...formState,
-        ageStr: '0 Bulan (Baru)',
-        status: 'Terverifikasi',
-        pending_verification: null,
-        history: []
-      };
-      setChildren([...children, newChild]);
-      showToast('Data Anak baru berhasil ditambahkan!');
+      router.post(route('kader.children.store'), payload, {
+        onSuccess: () => {
+          setIsAddModalOpen(false);
+          showToast('Data Anak baru berhasil ditambahkan!');
+        }
+      });
     }
-    setIsAddModalOpen(false);
   };
 
   // --- HANDLER VERIFIKASI INPUT USER (BUNDA) ---
   const handleVerifyInput = (childId, isApproved) => {
-    const updatedList = children.map(child => {
-      if (child.id === childId) {
-        if (isApproved) {
-          const approvedData = {
-            id: Date.now(),
-            date: child.pending_verification.date,
-            weight: child.pending_verification.weight,
-            height: child.pending_verification.height,
-            head_circulation: child.pending_verification.head_circulation,
-            notes: 'Verifikasi sukses: Diperiksa mandiri oleh Orang Tua'
-          };
-          return {
-            ...child,
-            status: 'Terverifikasi',
-            history: [approvedData, ...child.history],
-            pending_verification: null
-          };
-        } else {
-          return {
-            ...child,
-            status: 'Terverifikasi',
-            pending_verification: null
-          };
-        }
-      }
-      return child;
-    });
-    setChildren(updatedList);
-    
-    const updatedActive = updatedList.find(c => c.id === childId);
-    if (updatedActive) setActiveChild(updatedActive);
+    const child = children.find(c => c.id === childId);
+    if (!child || !child.pending_verification) return;
 
-    showToast(isApproved ? 'Input data dari Bunda berhasil disetujui!' : 'Input data dari Bunda ditolak.');
+    router.post(route('kader.children.verify', childId), {
+      status: isApproved ? 'approve' : 'reject',
+      measurement_id: child.pending_verification.id
+    }, {
+      onSuccess: () => {
+        showToast(isApproved ? 'Input data dari Bunda berhasil disetujui!' : 'Input data dari Bunda ditolak.');
+      }
+    });
   };
 
   return (

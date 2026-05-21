@@ -3,125 +3,107 @@
 namespace App\Http\Controllers\Kader;
 
 use App\Http\Controllers\Controller;
+use App\Models\Child;
+use App\Models\Measurement;
+use App\Services\StatusGiziCalculator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class GrowthMonitoringController extends Controller
 {
     /**
-     * Menampilkan halaman monitoring pertumbuhan (KMS) dengan data simulasi (Tanpa Database).
+     * Tampilkan halaman pemantauan pertumbuhan (KMS) dengan data real
      */
     public function index()
     {
-        // Data simulasi (mock) terstruktur yang dikirim ke halaman React di Canvas
-        $mockChildren = [
-            [
-                'id' => 1,
-                'name' => 'Leon Alfarizi',
-                'gender' => 'Laki-laki',
-                'ageMonths' => 27,
-                'ageStr' => '2 Tahun 3 Bulan',
-                'birthDate' => '2024-03-12',
-                'motherName' => 'Sarah Amelia',
-                'measurements' => [
-                    [
-                        'id' => 101, 
-                        'date' => '2026-05-10', 
-                        'weight' => 12.4, 
-                        'height' => 88.5, 
-                        'headCirc' => 48.2, 
-                        'statusGizi' => 'Gizi Baik (Normal)', 
-                        'statusTinggi' => 'Normal', 
-                        'statusKepala' => 'Normal'
-                    ],
-                    [
-                        'id' => 102, 
-                        'date' => '2026-04-12', 
-                        'weight' => 12.0, 
-                        'height' => 87.5, 
-                        'headCirc' => 48.0, 
-                        'statusGizi' => 'Gizi Baik (Normal)', 
-                        'statusTinggi' => 'Normal', 
-                        'statusKepala' => 'Normal'
-                    ],
-                    [
-                        'id' => 103, 
-                        'date' => '2026-03-15', 
-                        'weight' => 11.5, 
-                        'height' => 86.5, 
-                        'headCirc' => 47.8, 
-                        'statusGizi' => 'Gizi Baik (Normal)', 
-                        'statusTinggi' => 'Normal', 
-                        'statusKepala' => 'Normal'
-                    ]
-                ]
-            ],
-            [
-                'id' => 2,
-                'name' => 'Ayesha Zahra',
-                'gender' => 'Perempuan',
-                'ageMonths' => 7,
-                'ageStr' => '7 Bulan',
-                'birthDate' => '2025-10-05',
-                'motherName' => 'Nisa Rahmawati',
-                'measurements' => [
-                    [
-                        'id' => 201, 
-                        'date' => '2026-05-18', 
-                        'weight' => 7.8, 
-                        'height' => 68.2, 
-                        'headCirc' => 43.5, 
-                        'statusGizi' => 'Gizi Baik (Normal)', 
-                        'statusTinggi' => 'Normal', 
-                        'statusKepala' => 'Normal'
-                    ],
-                    [
-                        'id' => 202, 
-                        'date' => '2026-04-10', 
-                        'weight' => 7.5, 
-                        'height' => 67.0, 
-                        'headCirc' => 43.0, 
-                        'statusGizi' => 'Gizi Baik (Normal)', 
-                        'statusTinggi' => 'Normal', 
-                        'statusKepala' => 'Normal'
-                    ],
-                    [
-                        'id' => 203, 
-                        'date' => '2026-03-12', 
-                        'weight' => 7.0, 
-                        'height' => 65.5, 
-                        'headCirc' => 42.5, 
-                        'statusGizi' => 'Gizi Baik (Normal)', 
-                        'statusTinggi' => 'Normal', 
-                        'statusKepala' => 'Normal'
-                    ]
-                ]
-            ],
-            [
-                'id' => 3,
-                'name' => 'Bima Satria',
-                'gender' => 'Laki-laki',
-                'ageMonths' => 29,
-                'ageStr' => '2 Tahun 5 Bulan',
-                'birthDate' => '2023-12-18',
-                'motherName' => 'Dina Lestari',
-                'measurements' => [
-                    [
-                        'id' => 301, 
-                        'date' => '2026-05-08', 
-                        'weight' => 9.4, 
-                        'height' => 81.0, 
-                        'headCirc' => 45.1, 
-                        'statusGizi' => 'Gizi Kurang (Waspada)', 
-                        'statusTinggi' => 'Pendek (Stunted)', 
-                        'statusKepala' => 'Kecil (Mikrosefali)'
-                    ]
-                ]
-            ]
-        ];
+        $kader = Auth::user();
+
+        $query = Child::with(['measurements' => function ($q) {
+            $q->where('is_verified', true)->orderBy('measured_at');
+        }]);
+
+        if ($kader->posyandu_id) {
+            $query->where('posyandu_id', $kader->posyandu_id);
+        } elseif ($kader->kelurahan) {
+            $query->whereHas('parent', fn($q) => $q->where('kelurahan', $kader->kelurahan));
+        }
+
+        $children = $query->get()->map(function ($child) {
+            return [
+                'id'          => $child->id,
+                'name'        => $child->name,
+                'gender'      => $child->gender,
+                'ageMonths'   => $child->age_in_months,
+                'ageStr'      => $child->age_display,
+                'birthDate'   => $child->birth_date?->format('Y-m-d'),
+                'motherName'  => $child->parent?->name,
+                'measurements' => $child->measurements->map(fn($m) => [
+                    'id'          => $m->id,
+                    'date'        => $m->measured_at?->format('Y-m-d'),
+                    'weight'      => (float) $m->weight,
+                    'height'      => (float) $m->height,
+                    'headCirc'    => (float) $m->head_circumference,
+                    'statusGizi'  => $m->status_gizi,
+                    'statusTinggi' => $m->status_tinggi,
+                    'statusKepala' => $m->status_kepala,
+                    'zScoreBbu'   => $m->z_score_bbu,
+                    'zScoreTbu'   => $m->z_score_tbu,
+                ])->values(),
+            ];
+        });
 
         return Inertia::render('Kader/GrowthMonitoring', [
-            'initialChildren' => $mockChildren
+            'initialChildren' => $children,
         ]);
+    }
+
+    /**
+     * Catat pengukuran baru oleh Kader (langsung verified)
+     */
+    public function store(Request $request, $childId)
+    {
+        $child = Child::findOrFail($childId);
+
+        $request->validate([
+            'measured_at'        => 'required|date|before_or_equal:today',
+            'weight'             => 'required|numeric|min:0.5|max:60',
+            'height'             => 'nullable|numeric|min:20|max:130',
+            'head_circumference' => 'nullable|numeric|min:20|max:65',
+            'notes'              => 'nullable|string|max:500',
+        ]);
+
+        // Hitung umur saat pengukuran
+        $ageInMonths = (int) \Carbon\Carbon::parse($child->birth_date)
+            ->diffInMonths(\Carbon\Carbon::parse($request->measured_at));
+
+        // Hitung status gizi otomatis via WHO z-score
+        $giziResult = StatusGiziCalculator::calculate(
+            weight:   $request->weight,
+            height:   $request->height,
+            headCirc: $request->head_circumference,
+            ageMonths: $ageInMonths,
+            gender:   $child->gender
+        );
+
+        Measurement::create([
+            'child_id'          => $child->id,
+            'kader_id'          => Auth::id(),
+            'measured_at'       => $request->measured_at,
+            'age_in_months'     => $ageInMonths,
+            'weight'            => $request->weight,
+            'height'            => $request->height,
+            'head_circumference' => $request->head_circumference,
+            'status_gizi'       => $giziResult['status_gizi'],
+            'status_tinggi'     => $giziResult['status_tinggi'],
+            'status_kepala'     => $giziResult['status_kepala'],
+            'z_score_bbu'       => $giziResult['z_score_bbu'],
+            'z_score_tbu'       => $giziResult['z_score_tbu'],
+            'notes'             => $request->notes,
+            'is_verified'       => true, // Kader input = langsung verified
+            'verified_at'       => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'Data pengukuran berhasil dicatat. Status gizi dihitung otomatis.');
     }
 }

@@ -48,7 +48,7 @@ const dashboardStyles = `
 `;
 
 // --- KADER DASHBOARD PAGE ---
-export default function KaderDashboard({ auth }) {
+export default function KaderDashboard({ auth, stats = {}, jadwalHariIni = null, jadwalBerikutnya = null, todayQueues = [] }) {
     const kaderName = auth?.user?.name || 'Siti Aminah';
 
     return (
@@ -73,13 +73,17 @@ export default function KaderDashboard({ auth }) {
                         <div className="relative z-10 max-w-2xl space-y-4">
                             <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold uppercase tracking-wider text-white shadow-sm border border-white/20">
                                 <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
-                                Sesi Posyandu: Aktif
+                                Sesi Posyandu: {jadwalHariIni ? 'Berlangsung' : 'Selesai / Libur'}
                             </div>
                             <h3 className="text-3xl md:text-4xl font-black tracking-tight leading-tight text-white">
-                                Semangat Bertugas, Kader {kaderName}! 💪
+                                Semangat Bertugas, Kader {kaderName}!  
                             </h3>
                             <p className="text-emerald-50 text-sm md:text-base leading-relaxed max-w-xl font-medium">
-                                Hari ini ada jadwal pemantauan serentak di Posyandu Melati 1. Pantau selalu statistik pertumbuhan dan pastikan tidak ada data yang terlewat.
+                                {jadwalHariIni ? (
+                                    `Hari ini ada agenda: "${jadwalHariIni.agenda}" pukul ${jadwalHariIni.jam}. Pantau statistik dan layani antrian dengan sigap.`
+                                ) : (
+                                    'Hari ini tidak ada jadwal posyandu aktif yang ditugaskan kepada Anda. Silakan kelola data anak atau pantau laporan AI.'
+                                )}
                             </p>
                         </div>
                     </div>
@@ -91,39 +95,39 @@ export default function KaderDashboard({ auth }) {
                                 <Users size={20} className="text-blue-500 group-hover:scale-110 transition-transform" />
                                 <span className="text-xs font-bold uppercase tracking-wider">Total Terdaftar</span>
                             </div>
-                            <h4 className="text-4xl font-black text-gray-900">128</h4>
-                            <p className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 inline-block px-2.5 py-1 rounded-lg w-max">Anak dalam wilayah</p>
+                            <h4 className="text-4xl font-black text-gray-900">{stats.totalAnak || 0}</h4>
+                            <p className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 inline-block px-2.5 py-1 rounded-lg w-max">Balita di wilayah tugas</p>
                         </div>
                         
                         <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col justify-center gap-3 hover:-translate-y-1 transition-transform group">
                             <div className="flex items-center gap-2 text-gray-500 mb-1">
                                 <CalendarCheck size={20} className="text-emerald-500 group-hover:scale-110 transition-transform" />
-                                <span className="text-xs font-bold uppercase tracking-wider">Hadir Hari Ini</span>
+                                <span className="text-xs font-bold uppercase tracking-wider">Pemeriksaan Selesai</span>
                             </div>
                             <h4 className="text-4xl font-black text-gray-900 flex items-baseline gap-1">
-                                32 <span className="text-xl text-gray-400 font-medium">/128</span>
+                                {stats.antrianSelesai || 0} <span className="text-xl text-gray-400 font-medium">/ {stats.totalAntrian || 0}</span>
                             </h4>
-                            <p className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 inline-block px-2.5 py-1 rounded-lg w-max">Sedang berlangsung</p>
+                            <p className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 inline-block px-2.5 py-1 rounded-lg w-max">Kehadiran hari ini</p>
                         </div>
 
                         <div className="bg-rose-50 p-6 rounded-3xl border border-rose-200 shadow-sm flex flex-col justify-center gap-3 hover:-translate-y-1 transition-transform relative overflow-hidden group">
                             <div className="absolute -right-4 -bottom-4 opacity-10 text-rose-500 group-hover:scale-110 transition-transform duration-500"><AlertTriangle size={90}/></div>
                             <div className="flex items-center gap-2 text-rose-600 mb-1 relative z-10">
                                 <AlertTriangle size={20} className="group-hover:scale-110 transition-transform" />
-                                <span className="text-xs font-bold uppercase tracking-wider">Risiko Stunting</span>
+                                <span className="text-xs font-bold uppercase tracking-wider">Butuh Verifikasi</span>
                             </div>
-                            <h4 className="text-4xl font-black text-rose-700 relative z-10">5</h4>
-                            <p className="text-xs font-bold text-rose-700 bg-rose-100 border border-rose-200 inline-block px-2.5 py-1 rounded-lg w-max relative z-10">AI Deteksi: Perlu Rujukan</p>
+                            <h4 className="text-4xl font-black text-rose-700 relative z-10">{stats.butuhVerifikasi || 0}</h4>
+                            <p className="text-xs font-bold text-rose-700 bg-rose-100 border border-rose-200 inline-block px-2.5 py-1 rounded-lg w-max relative z-10">Inputan mandiri Bunda</p>
                         </div>
 
                         <div className="bg-amber-50 p-6 rounded-3xl border border-amber-200 shadow-sm flex flex-col justify-center gap-3 hover:-translate-y-1 transition-transform group relative overflow-hidden">
                             <div className="absolute -right-4 -bottom-4 opacity-10 text-amber-500 group-hover:scale-110 transition-transform duration-500"><Baby size={90}/></div>
                             <div className="flex items-center gap-2 text-amber-600 mb-1 relative z-10">
                                 <Baby size={20} className="group-hover:scale-110 transition-transform" />
-                                <span className="text-xs font-bold uppercase tracking-wider">Imunisasi Kurang</span>
+                                <span className="text-xs font-bold uppercase tracking-wider">Total Antrian</span>
                             </div>
-                            <h4 className="text-4xl font-black text-amber-700 relative z-10">8</h4>
-                            <p className="text-xs font-bold text-amber-700 bg-amber-100 border border-amber-200 inline-block px-2.5 py-1 rounded-lg w-max relative z-10">Belum lengkap bulan ini</p>
+                            <h4 className="text-4xl font-black text-amber-700 relative z-10">{stats.totalAntrian || 0}</h4>
+                            <p className="text-xs font-bold text-amber-700 bg-amber-100 border border-amber-200 inline-block px-2.5 py-1 rounded-lg w-max relative z-10">Antrean hari ini</p>
                         </div>
                     </div>
 
@@ -140,20 +144,20 @@ export default function KaderDashboard({ auth }) {
                             </div>
                             
                             <div className="space-y-4">
-                                <button className="w-full flex items-center justify-between p-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all shadow-md group border border-emerald-500" style={{ backgroundColor: '#059669' }}>
+                                <Link href={route('kader.ai-monitoring.index')} className="w-full flex items-center justify-between p-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all shadow-md group border border-emerald-500" style={{ backgroundColor: '#059669' }}>
                                     <div className="flex items-center gap-4">
                                         <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm text-white">
-                                            <QrCode size={24} />
+                                            <Sparkles size={24} />
                                         </div>
                                         <div className="text-left">
-                                            <p className="font-bold text-base text-white">AI Scan Buku KIA</p>
-                                            <p className="text-xs text-emerald-100 mt-0.5">Ekstrak & verifikasi otomatis</p>
+                                            <p className="font-bold text-base text-white">AI Deteksi Risiko</p>
+                                            <p className="text-xs text-emerald-100 mt-0.5">Analisis stunting otomatis</p>
                                         </div>
                                     </div>
                                     <ArrowRight size={20} className="text-white transform transition-transform group-hover:translate-x-1" />
-                                </button>
+                                </Link>
 
-                                <button className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 border border-gray-200 hover:border-emerald-300 text-gray-800 rounded-2xl transition-all shadow-sm group">
+                                <Link href={route('kader.growth-monitoring.index')} className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 border border-gray-200 hover:border-emerald-300 text-gray-800 rounded-2xl transition-all shadow-sm group">
                                     <div className="flex items-center gap-4">
                                         <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-100 transition-colors">
                                             <ClipboardEdit size={24} />
@@ -164,20 +168,20 @@ export default function KaderDashboard({ auth }) {
                                         </div>
                                     </div>
                                     <ArrowRight size={20} className="text-gray-400 group-hover:text-emerald-600 transform transition-transform group-hover:translate-x-1" />
-                                </button>
+                                </Link>
 
-                                <button className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 border border-gray-200 hover:border-emerald-300 text-gray-800 rounded-2xl transition-all shadow-sm group">
+                                <Link href={route('kader.children.index')} className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 border border-gray-200 hover:border-emerald-300 text-gray-800 rounded-2xl transition-all shadow-sm group">
                                     <div className="flex items-center gap-4">
                                         <div className="bg-violet-50 text-violet-600 p-3 rounded-xl group-hover:bg-violet-100 transition-colors">
                                             <FileCheck size={24} />
                                         </div>
                                         <div className="text-left">
-                                            <p className="font-bold text-base text-gray-900">Validasi Data User</p>
-                                            <p className="text-xs text-gray-500 mt-0.5">Cek inputan dari Bunda</p>
+                                            <p className="font-bold text-base text-gray-900">Verifikasi Balita</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">Approve registrasi & KMS mandiri</p>
                                         </div>
                                     </div>
                                     <ArrowRight size={20} className="text-gray-400 group-hover:text-emerald-600 transform transition-transform group-hover:translate-x-1" />
-                                </button>
+                                </Link>
                             </div>
                         </div>
 
@@ -196,29 +200,33 @@ export default function KaderDashboard({ auth }) {
                                         <div className="bg-white/10 backdrop-blur-md p-2 rounded-xl border border-white/20">
                                             <Sparkles size={20} className="text-fuchsia-300" />
                                         </div>
-                                        <h4 className="text-xl font-bold text-white">AI Analitik Wilayah (Live)</h4>
+                                        <h4 className="text-xl font-bold text-white">Informasi Jadwal Terdekat</h4>
                                     </div>
-                                    <span className="text-xs bg-indigo-500/50 border border-indigo-400/50 px-3 py-1.5 rounded-full text-indigo-100 font-bold">Bulan Ini</span>
+                                    <span className="text-xs bg-indigo-500/50 border border-indigo-400/50 px-3 py-1.5 rounded-full text-indigo-100 font-bold">Jadwal Tugas</span>
                                 </div>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
-                                    <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-5 flex items-center gap-4 hover:bg-white/20 transition-colors cursor-pointer">
-                                        <div className="bg-rose-500/20 text-rose-400 p-3.5 rounded-xl border border-rose-500/30">
-                                            <TrendingUp size={24} />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-indigo-200 mb-1">Zona Perhatian (RT 03)</p>
-                                            <p className="font-black text-2xl text-white">12 Anak <span className="text-xs font-bold text-rose-200 bg-rose-600/50 px-2.5 py-1 rounded-lg ml-2 align-middle border border-rose-500/50">Risiko Tinggi</span></p>
-                                        </div>
+                                    <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-5 hover:bg-white/20 transition-colors">
+                                        <p className="text-xs font-bold uppercase tracking-wider text-indigo-200 mb-1">Hari Ini</p>
+                                        {jadwalHariIni ? (
+                                            <div>
+                                                <h5 className="font-bold text-lg text-white">{jadwalHariIni.agenda}</h5>
+                                                <p className="text-xs text-indigo-200 mt-1">{jadwalHariIni.jam}</p>
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm font-medium text-slate-300">Tidak ada jadwal hari ini</p>
+                                        )}
                                     </div>
-                                    <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-5 flex items-center gap-4 hover:bg-white/20 transition-colors cursor-pointer">
-                                        <div className="bg-amber-500/20 text-amber-400 p-3.5 rounded-xl border border-amber-500/30">
-                                            <TrendingUp size={24} />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-indigo-200 mb-1">Zona Pantau (RT 01)</p>
-                                            <p className="font-black text-2xl text-white">5 Anak <span className="text-xs font-bold text-amber-200 bg-amber-600/50 px-2.5 py-1 rounded-lg ml-2 align-middle border border-amber-500/50">Risiko Sedang</span></p>
-                                        </div>
+                                    <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-5 hover:bg-white/20 transition-colors">
+                                        <p className="text-xs font-bold uppercase tracking-wider text-indigo-200 mb-1">Berikutnya</p>
+                                        {jadwalBerikutnya ? (
+                                            <div>
+                                                <h5 className="font-bold text-lg text-white">{jadwalBerikutnya.agenda}</h5>
+                                                <p className="text-xs text-indigo-200 mt-1">{jadwalBerikutnya.tanggal}</p>
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm font-medium text-slate-300">Belum ada jadwal mendatang</p>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -231,42 +239,45 @@ export default function KaderDashboard({ auth }) {
                                             <Bell size={20} />
                                         </div>
                                         <div>
-                                            <h4 className="text-xl font-bold text-gray-900">Notifikasi Pemeriksaan</h4>
-                                            <p className="text-sm text-gray-500 mt-0.5">Antrian yang butuh tindakan segera.</p>
+                                            <h4 className="text-xl font-bold text-gray-900">Antrian Aktif Hari Ini</h4>
+                                            <p className="text-sm text-gray-500 mt-0.5">Balita yang sedang menunggu giliran pemeriksaan.</p>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="space-y-4">
-                                    {[
-                                        { no: 'A-12', nama: 'Leon Alfarizi', info: 'TB stagnan 2 bulan terakhir', status: 'Cek Ulang', type: 'warning' },
-                                        { no: 'A-14', nama: 'Ayesha Zahra', info: 'Hadir untuk Imunisasi DPT', status: 'Menunggu', type: 'normal' },
-                                    ].map((antrian, idx) => (
-                                        <div key={idx} className={`flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl border transition-all gap-4 sm:gap-0 ${
-                                            antrian.type === 'warning' ? 'bg-orange-50/50 border-orange-200' : 'bg-white border-gray-200 hover:bg-gray-50'
-                                        }`}>
-                                            <div className="flex items-center gap-4">
-                                                <div className={`w-14 h-14 rounded-xl flex items-center justify-center font-black text-xl shadow-sm ${
-                                                    antrian.type === 'warning' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-700'
-                                                }`}>
-                                                    {antrian.no}
-                                                </div>
-                                                <div>
-                                                    <h5 className="font-bold text-gray-900 text-base">{antrian.nama}</h5>
-                                                    <p className={`text-sm font-medium mt-1 flex items-center gap-1.5 ${antrian.type === 'warning' ? 'text-orange-600' : 'text-gray-500'}`}>
-                                                        {antrian.type === 'warning' && <AlertTriangle size={14} />} {antrian.info}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <button className={`text-sm font-bold px-5 py-2.5 rounded-xl transition-colors w-full sm:w-auto text-center ${
-                                                antrian.type === 'warning' 
-                                                ? 'bg-white text-orange-600 border border-orange-300 hover:bg-orange-600 hover:text-white shadow-sm' 
-                                                : 'text-emerald-600 border border-emerald-500 hover:bg-emerald-600 hover:text-white bg-white shadow-sm'
+                                    {todayQueues.length > 0 ? (
+                                        todayQueues.map((antrian, idx) => (
+                                            <div key={antrian.id || idx} className={`flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl border transition-all gap-4 sm:gap-0 ${
+                                                antrian.status === 'Diperiksa' ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-gray-200 hover:bg-gray-50'
                                             }`}>
-                                                {antrian.status}
-                                            </button>
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center font-black text-xl shadow-sm ${
+                                                        antrian.status === 'Diperiksa' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700'
+                                                    }`}>
+                                                        {antrian.no}
+                                                    </div>
+                                                    <div>
+                                                        <h5 className="font-bold text-gray-900 text-base">{antrian.childName}</h5>
+                                                        <p className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 inline-block px-2.5 py-0.5 rounded-lg mt-1 mr-2">{antrian.agenda}</p>
+                                                        <p className="text-xs text-gray-500 inline-block">Ibu: {antrian.motherName}</p>
+                                                    </div>
+                                                </div>
+                                                <Link href={route('kader.schedule.index')} className={`text-sm font-bold px-5 py-2.5 rounded-xl transition-colors w-full sm:w-auto text-center ${
+                                                    antrian.status === 'Diperiksa' 
+                                                    ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm' 
+                                                    : 'text-emerald-600 border border-emerald-500 hover:bg-emerald-600 hover:text-white bg-white shadow-sm'
+                                                }`}>
+                                                    {antrian.status}
+                                                </Link>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-8 text-gray-400">
+                                            <CalendarDays className="mx-auto mb-2 text-gray-300" size={40} />
+                                            <p className="text-sm font-medium">Tidak ada antrian aktif hari ini.</p>
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
                             </div>
 

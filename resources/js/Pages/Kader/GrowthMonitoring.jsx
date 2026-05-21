@@ -16,56 +16,12 @@ import {
   Brain
 } from 'lucide-react';
 
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import KaderLayout from '@/Layouts/KaderLayout';
 
-// --- DUMMY DATA UNTUK ANAK DI SELEKSI ---
-const initialChildrenData = [
-  {
-    id: 1,
-    name: 'Leon Alfarizi',
-    gender: 'Laki-laki',
-    ageMonths: 27,
-    ageStr: '2 Tahun 3 Bulan',
-    birthDate: '2024-03-12',
-    motherName: 'Sarah Amelia',
-    measurements: [
-      { id: 101, date: '2026-05-10', weight: 12.4, height: 88.5, headCirc: 48.2, statusGizi: 'Gizi Baik (Normal)', statusTinggi: 'Normal', statusKepala: 'Normal' },
-      { id: 102, date: '2026-04-12', weight: 12.0, height: 87.5, headCirc: 48.0, statusGizi: 'Gizi Baik (Normal)', statusTinggi: 'Normal', statusKepala: 'Normal' },
-      { id: 103, date: '2026-03-15', weight: 11.5, height: 86.5, headCirc: 47.8, statusGizi: 'Gizi Baik (Normal)', statusTinggi: 'Normal', statusKepala: 'Normal' }
-    ]
-  },
-  {
-    id: 2,
-    name: 'Ayesha Zahra',
-    gender: 'Perempuan',
-    ageMonths: 7,
-    ageStr: '7 Bulan',
-    birthDate: '2025-10-05',
-    motherName: 'Nisa Rahmawati',
-    measurements: [
-      { id: 201, date: '2026-05-18', weight: 7.8, height: 68.2, headCirc: 43.5, statusGizi: 'Gizi Baik (Normal)', statusTinggi: 'Normal', statusKepala: 'Normal' },
-      { id: 202, date: '2026-04-10', weight: 7.5, height: 67.0, headCirc: 43.0, statusGizi: 'Gizi Baik (Normal)', statusTinggi: 'Normal', statusKepala: 'Normal' },
-      { id: 203, date: '2026-03-12', weight: 7.0, height: 65.5, headCirc: 42.5, statusGizi: 'Gizi Baik (Normal)', statusTinggi: 'Normal', statusKepala: 'Normal' }
-    ]
-  },
-  {
-    id: 3,
-    name: 'Bima Satria',
-    gender: 'Laki-laki',
-    ageMonths: 29,
-    ageStr: '2 Tahun 5 Bulan',
-    birthDate: '2023-12-18',
-    motherName: 'Dina Lestari',
-    measurements: [
-      { id: 301, date: '2026-05-08', weight: 9.4, height: 81.0, headCirc: 45.1, statusGizi: 'Gizi Kurang (Waspada)', statusTinggi: 'Pendek (Stunted)', statusKepala: 'Kecil (Mikrosefali)' }
-    ]
-  }
-];
-
-export default function GrowthMonitoring() {
-  const [childrenList, setChildrenList] = useState(initialChildrenData);
-  const [selectedChildId, setSelectedChildId] = useState(1);
+export default function GrowthMonitoring({ initialChildren = [] }) {
+  const [childrenList, setChildrenList] = useState(initialChildren || []);
+  const [selectedChildId, setSelectedChildId] = useState(initialChildren[0]?.id || null);
   const [measureType, setMeasureType] = useState('weight'); // 'weight', 'height', 'headCirc'
 
   // Form states
@@ -78,8 +34,18 @@ export default function GrowthMonitoring() {
   const [validationAlerts, setValidationAlerts] = useState([]);
   const [toast, setToast] = useState(null);
 
-  const selectedChild = childrenList.find(c => c.id === selectedChildId) || childrenList[0];
-  const lastMeasurement = selectedChild.measurements[0] || null;
+  // Synchronize local state with props from server
+  useEffect(() => {
+    setChildrenList(initialChildren || []);
+    if (initialChildren && initialChildren.length > 0) {
+      if (!selectedChildId || !initialChildren.some(c => c.id === selectedChildId)) {
+        setSelectedChildId(initialChildren[0].id);
+      }
+    }
+  }, [initialChildren]);
+
+  const selectedChild = childrenList.find(c => c.id === selectedChildId) || childrenList[0] || null;
+  const lastMeasurement = selectedChild?.measurements?.[0] || null;
 
   // --- AUTOMATIC WHO STATUS CALCULATOR ---
   const calculateAutomaticStatus = (w, h, hc, age) => {
@@ -150,6 +116,14 @@ export default function GrowthMonitoring() {
   // --- SUBMIT MEASUREMENT ---
   const handleSaveMeasurement = (e) => {
     e.preventDefault();
+    if (!selectedChild) {
+      setToast({
+        type: 'error',
+        text: 'Silakan pilih balita terlebih dahulu!'
+      });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
 
     const hasFatalError = validationAlerts.some(a => a.type === 'error');
     if (hasFatalError) {
@@ -162,46 +136,38 @@ export default function GrowthMonitoring() {
     }
 
     const wNum = parseFloat(weight);
-    const hNum = parseFloat(height);
-    const hcNum = parseFloat(headCirc);
+    const hNum = height ? parseFloat(height) : null;
+    const hcNum = headCirc ? parseFloat(headCirc) : null;
 
-    const stats = calculateAutomaticStatus(wNum, hNum, hcNum, selectedChild.ageMonths);
-
-    const newMeasure = {
-      id: Date.now(),
-      date,
+    router.post(route('kader.growth-monitoring.store', selectedChild.id), {
+      measured_at: date,
       weight: wNum,
       height: hNum,
-      headCirc: hcNum,
-      statusGizi: stats.gizi,
-      statusTinggi: stats.tinggi,
-      statusKepala: stats.kepala
-    };
-
-    const updatedChildren = childrenList.map(child => {
-      if (child.id === selectedChildId) {
-        return {
-          ...child,
-          measurements: [newMeasure, ...child.measurements]
-        };
+      head_circumference: hcNum,
+    }, {
+      onSuccess: () => {
+        setToast({
+          type: 'success',
+          text: `Data pertumbuhan ${selectedChild.name} berhasil direkam ke KMS!`
+        });
+        setTimeout(() => setToast(null), 4000);
+        setWeight('');
+        setHeight('');
+        setHeadCirc('');
+      },
+      onError: (err) => {
+        const errorMsg = Object.values(err)[0] || 'Gagal menyimpan data pengukuran.';
+        setToast({
+          type: 'error',
+          text: errorMsg
+        });
+        setTimeout(() => setToast(null), 4000);
       }
-      return child;
     });
-
-    setChildrenList(updatedChildren);
-    setToast({
-      type: 'success',
-      text: `Data pertumbuhan ${selectedChild.name} berhasil direkam ke KMS!`
-    });
-    setTimeout(() => setToast(null), 4000);
-
-    setWeight('');
-    setHeight('');
-    setHeadCirc('');
   };
 
   // --- PERSENTASE TITIK PADA GRAFIK KMS ---
-  const points = selectedChild.measurements.slice(0, 5).reverse();
+  const points = selectedChild?.measurements ? [...selectedChild.measurements].slice(0, 5).reverse() : [];
   const maxChartVal = measureType === 'weight' ? 18 : measureType === 'height' ? 110 : 55;
   const minChartVal = measureType === 'weight' ? 2 : measureType === 'height' ? 50 : 30;
   const range = maxChartVal - minChartVal;
@@ -277,7 +243,7 @@ export default function GrowthMonitoring() {
                 <div className="flex justify-between items-center p-3 bg-emerald-50/50 rounded-xl border border-emerald-100/30">
                   <span className="text-xs font-bold text-gray-500 uppercase">BB / Umur</span>
                   <span className={`text-xs font-black ${
-                    lastMeasurement?.statusGizi.includes('Kurang') ? 'text-amber-600' : lastMeasurement?.statusGizi.includes('Buruk') ? 'text-rose-600' : 'text-emerald-700'
+                    lastMeasurement?.statusGizi?.includes('Kurang') ? 'text-amber-600' : lastMeasurement?.statusGizi?.includes('Buruk') ? 'text-rose-600' : 'text-emerald-700'
                   }`}>
                     {lastMeasurement ? lastMeasurement.statusGizi : 'Belum Ada'}
                   </span>
@@ -285,7 +251,7 @@ export default function GrowthMonitoring() {
                 <div className="flex justify-between items-center p-3 bg-teal-50/50 rounded-xl border border-teal-100/30">
                   <span className="text-xs font-bold text-gray-500 uppercase">TB / Umur</span>
                   <span className={`text-xs font-black ${
-                    lastMeasurement?.statusTinggi.includes('Stunted') ? 'text-rose-600' : 'text-teal-700'
+                    lastMeasurement?.statusTinggi?.includes('Stunted') ? 'text-rose-600' : 'text-teal-700'
                   }`}>
                     {lastMeasurement ? lastMeasurement.statusTinggi : 'Belum Ada'}
                   </span>
@@ -484,7 +450,7 @@ export default function GrowthMonitoring() {
               </h4>
 
               <div className="space-y-4 max-h-[300px] overflow-y-auto no-scrollbar">
-                {selectedChild.measurements.map((record) => (
+                {selectedChild?.measurements?.map((record) => (
                   <div key={record.id} className="p-4 bg-gray-50 border border-gray-100 hover:border-emerald-100 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-0 transition-colors">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center border border-gray-100 text-emerald-600 shrink-0">
@@ -499,10 +465,10 @@ export default function GrowthMonitoring() {
                     </div>
                     <div className="flex gap-2 shrink-0 flex-wrap">
                       <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 bg-emerald-100/50 border border-emerald-200 text-emerald-700 rounded-lg">
-                        {record.statusGizi.split(' ')[0]}
+                        {record.statusGizi?.split(' ')[0] || 'N/A'}
                       </span>
                       <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 bg-teal-100/50 border border-teal-200 text-teal-700 rounded-lg">
-                        {record.statusTinggi.split(' ')[0]}
+                        {record.statusTinggi?.split(' ')[0] || 'N/A'}
                       </span>
                     </div>
                   </div>

@@ -14,27 +14,30 @@ import {
   Baby
 } from 'lucide-react';
 
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
-export default function AdminDashboard() {
-    // --- DUMMY DATA UNTUK ADMIN ---
+export default function AdminDashboard({ stats = {}, giziStats = {}, stuntingStats = {}, recentUsers = [], giziPerWilayah = [] }) {
     const adminStats = {
-        totalUsers: 12450,
-        totalKader: 320,
-        totalAnak: 15800,
-        totalPosyandu: 45
+        totalUsers: stats.totalBunda || 0,
+        totalKader: stats.totalKader || 0,
+        totalAnak: stats.totalAnak || 0,
+        totalPosyandu: stats.totalPosyandu || 0
     };
 
+    const totalStunting = (stuntingStats.stunted || 0) + (stuntingStats.severelyStunted || 0);
+    const totalAnak = stats.totalAnak || 0;
+    const percentage = totalAnak > 0 ? ((totalStunting / totalAnak) * 100).toFixed(1) + '%' : '0%';
+
     const stuntingData = {
-        totalStunting: 425,
-        percentage: '2.6%',
-        trend: '-0.4%', // Penurunan stunting
-        regions: [
-            { name: 'Kec. Cilacap Selatan', cases: 120, status: 'warning' },
-            { name: 'Kec. Cilacap Tengah', cases: 85, status: 'warning' },
-            { name: 'Kec. Cilacap Utara', cases: 220, status: 'danger' },
-        ]
+        totalStunting: totalStunting,
+        percentage: percentage,
+        trend: '-0.4%', // Tren statis/mock karena tidak ada riwayat historis tersimpan
+        regions: giziPerWilayah.map(region => ({
+            name: 'Kec. ' + region.kecamatan,
+            cases: region.total_bunda,
+            status: region.total_bunda > 50 ? 'danger' : 'warning'
+        }))
     };
 
     return (
@@ -172,9 +175,9 @@ export default function AdminDashboard() {
                                         </div>
                                     </div>
                                 ))}
-                                <button className="w-full mt-2 py-3 bg-white border border-slate-200 text-blue-600 text-sm font-bold rounded-xl hover:bg-slate-50 transition-colors flex justify-center items-center gap-2">
+                                <Link href={route('admin.reports.index')} className="w-full mt-2 py-3 bg-white border border-slate-200 text-blue-600 text-sm font-bold rounded-xl hover:bg-slate-50 transition-colors flex justify-center items-center gap-2">
                                     Lihat Laporan Lengkap <ArrowRight size={16} />
-                                </button>
+                                </Link>
                             </div>
                         </div>
                     </div>
@@ -186,7 +189,7 @@ export default function AdminDashboard() {
                         </h4>
 
                         <div className="space-y-4">
-                            <button className="w-full flex items-center justify-between p-4 bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md rounded-2xl transition-all group">
+                            <Link href={route('admin.posyandu.index')} className="w-full flex items-center justify-between p-4 bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md rounded-2xl transition-all group">
                                 <div className="flex items-center gap-4">
                                     <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
                                         <Building2 size={20} />
@@ -197,9 +200,9 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                                 <ArrowRight size={18} className="text-slate-300 group-hover:text-blue-600 transform group-hover:translate-x-1 transition-all" />
-                            </button>
+                            </Link>
 
-                            <button className="w-full flex items-center justify-between p-4 bg-white border border-slate-200 hover:border-emerald-400 hover:shadow-md rounded-2xl transition-all group">
+                            <Link href={route('admin.users.index')} className="w-full flex items-center justify-between p-4 bg-white border border-slate-200 hover:border-emerald-400 hover:shadow-md rounded-2xl transition-all group">
                                 <div className="flex items-center gap-4">
                                     <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
                                         <UserCog size={20} />
@@ -210,12 +213,16 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">3 Pending</span>
+                                    {stats.akunNonaktif > 0 && (
+                                        <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                            {stats.akunNonaktif} Pending
+                                        </span>
+                                    )}
                                     <ArrowRight size={18} className="text-slate-300 group-hover:text-emerald-600 transform group-hover:translate-x-1 transition-all" />
                                 </div>
-                            </button>
+                            </Link>
 
-                            <button className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-black text-white rounded-2xl transition-all shadow-md group">
+                            <Link href={route('admin.reports.index')} className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-black text-white rounded-2xl transition-all shadow-md group">
                                 <div className="flex items-center gap-4">
                                     <div className="bg-white/10 text-white p-3 rounded-xl">
                                         <ShieldAlert size={20} />
@@ -226,7 +233,7 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                                 <ArrowRight size={18} className="text-slate-400 group-hover:text-white transform group-hover:translate-x-1 transition-all" />
-                            </button>
+                            </Link>
                         </div>
                     </div>
 

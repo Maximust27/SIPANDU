@@ -6,6 +6,7 @@ import { User, ShieldCheck, AlertTriangle, Settings, ArrowLeft } from 'lucide-re
 // =======================================================================================
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import KaderLayout from '@/Layouts/KaderLayout'; // <-- Import layout Kader yang baru dibuat
+import AdminLayout from '@/Layouts/AdminLayout'; // <-- Import layout Admin yang baru dibuat
 import { Head, Link } from '@inertiajs/react';
 import DeleteUserForm from './Partials/DeleteUserForm';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
@@ -27,7 +28,9 @@ export default function Edit({ auth, mustVerifyEmail, status }) {
     const userRole = auth.user.role || 'user'; 
 
     // 2. Tentukan link kembali berdasarkan role
-    const backLink = userRole === 'kader' ? route('kader.dashboard') : route('dashboard');
+    const backLink = userRole === 'admin' 
+        ? route('admin.dashboard') 
+        : (userRole === 'kader' ? route('kader.dashboard') : route('dashboard'));
 
     // 3. Simpan isi konten profil ke dalam variabel agar tidak perlu diketik dua kali
     const ProfileContent = (
@@ -35,8 +38,8 @@ export default function Edit({ auth, mustVerifyEmail, status }) {
             <style>{profileStyles}</style>
 
             {/* Floating Blobs (Akan menyesuaikan warna layout pembungkusnya nanti) */}
-            <div className={`absolute top-0 right-0 w-[400px] h-[400px] rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-dash-blob pointer-events-none z-0 ${userRole === 'kader' ? 'bg-teal-200' : 'bg-purple-200'}`}></div>
-            <div className={`absolute top-60 left-10 w-[300px] h-[300px] rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-dash-blob pointer-events-none z-0 ${userRole === 'kader' ? 'bg-emerald-200' : 'bg-blue-200'}`} style={{ animationDelay: '2000ms' }}></div>
+            <div className={`absolute top-0 right-0 w-[400px] h-[400px] rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-dash-blob pointer-events-none z-0 ${userRole === 'admin' ? 'bg-blue-200' : (userRole === 'kader' ? 'bg-teal-200' : 'bg-purple-200')}`}></div>
+            <div className={`absolute top-60 left-10 w-[300px] h-[300px] rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-dash-blob pointer-events-none z-0 ${userRole === 'admin' ? 'bg-indigo-200' : (userRole === 'kader' ? 'bg-emerald-200' : 'bg-blue-200')}`} style={{ animationDelay: '2000ms' }}></div>
 
             <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 relative z-10 space-y-6 pb-20">
                 
@@ -45,7 +48,9 @@ export default function Edit({ auth, mustVerifyEmail, status }) {
                     <Link 
                         href={backLink} 
                         className={`inline-flex items-center gap-2 px-4 py-2 bg-white/70 hover:bg-white font-semibold text-sm rounded-xl border shadow-sm backdrop-blur-md transition-all hover:shadow hover:-translate-x-1 ${
-                            userRole === 'kader' ? 'text-gray-600 hover:text-emerald-600 border-emerald-100' : 'text-gray-600 hover:text-violet-600 border-gray-200/60'
+                            userRole === 'admin' 
+                                ? 'text-gray-600 hover:text-blue-600 border-blue-100' 
+                                : (userRole === 'kader' ? 'text-gray-600 hover:text-emerald-600 border-emerald-100' : 'text-gray-600 hover:text-violet-600 border-gray-200/60')
                         }`}
                     >
                         <ArrowLeft size={18} />
@@ -55,7 +60,9 @@ export default function Edit({ auth, mustVerifyEmail, status }) {
 
                 {/* Header Banner Kecil */}
                 <div className={`rounded-[2rem] p-6 sm:p-8 text-white shadow-lg flex flex-col sm:flex-row items-center gap-6 relative overflow-hidden mt-4 ${
-                    userRole === 'kader' ? 'bg-gradient-to-r from-teal-500 to-emerald-600 shadow-emerald-200/50' : 'bg-gradient-to-r from-violet-600 to-indigo-600 shadow-violet-200/50'
+                    userRole === 'admin' 
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-700 shadow-blue-200/50'
+                        : (userRole === 'kader' ? 'bg-gradient-to-r from-teal-500 to-emerald-600 shadow-emerald-200/50' : 'bg-gradient-to-r from-violet-600 to-indigo-600 shadow-violet-200/50')
                 }`}>
                     <div className="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4 pointer-events-none">
                         <User size={150} fill="currentColor" />
@@ -65,8 +72,8 @@ export default function Edit({ auth, mustVerifyEmail, status }) {
                         <Settings size={32} />
                     </div>
                     <div className="text-center sm:text-left relative z-10">
-                        <h3 className="text-2xl font-bold tracking-tight">Pengaturan Akun {userRole === 'kader' ? 'Kader' : 'Profil'}</h3>
-                        <p className={`${userRole === 'kader' ? 'text-teal-50' : 'text-violet-100'} text-sm mt-1`}>
+                        <h3 className="text-2xl font-bold tracking-tight">Pengaturan Akun {userRole === 'admin' ? 'Admin' : (userRole === 'kader' ? 'Kader' : 'Profil')}</h3>
+                        <p className={`${userRole === 'admin' ? 'text-blue-50' : (userRole === 'kader' ? 'text-teal-50' : 'text-violet-100')} text-sm mt-1`}>
                             Kelola detail profil, alamat email, dan pengaturan keamanan akun Anda.
                         </p>
                     </div>
@@ -75,7 +82,7 @@ export default function Edit({ auth, mustVerifyEmail, status }) {
                 {/* Section 1: Update Profile Information */}
                 <div className="bg-white/80 backdrop-blur-xl p-6 sm:p-8 rounded-[2rem] shadow-sm border border-white transition-all hover:shadow-md relative overflow-hidden group">
                     <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-                        <div className={`p-2.5 rounded-xl group-hover:scale-110 transition-transform ${userRole === 'kader' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                        <div className={`p-2.5 rounded-xl group-hover:scale-110 transition-transform ${userRole === 'admin' ? 'bg-blue-50 text-blue-600' : (userRole === 'kader' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600')}`}>
                             <User size={20} />
                         </div>
                         <div>
@@ -93,7 +100,7 @@ export default function Edit({ auth, mustVerifyEmail, status }) {
                 {/* Section 2: Update Password */}
                 <div className="bg-white/80 backdrop-blur-xl p-6 sm:p-8 rounded-[2rem] shadow-sm border border-white transition-all hover:shadow-md relative overflow-hidden group">
                     <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-                        <div className={`p-2.5 rounded-xl group-hover:scale-110 transition-transform ${userRole === 'kader' ? 'bg-teal-50 text-teal-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                        <div className={`p-2.5 rounded-xl group-hover:scale-110 transition-transform ${userRole === 'admin' ? 'bg-indigo-50 text-indigo-600' : (userRole === 'kader' ? 'bg-teal-50 text-teal-600' : 'bg-emerald-50 text-emerald-600')}`}>
                             <ShieldCheck size={20} />
                         </div>
                         <div>
@@ -123,6 +130,15 @@ export default function Edit({ auth, mustVerifyEmail, status }) {
     );
 
     // 4. BUNGKUS DENGAN LAYOUT YANG TEPAT BERDASARKAN ROLE
+    if (userRole === 'admin') {
+        return (
+            <AdminLayout headerTitle="Pengaturan" headerIcon={<Settings size={20} />}>
+                <Head title="Pengaturan Admin" />
+                {ProfileContent}
+            </AdminLayout>
+        );
+    }
+
     if (userRole === 'kader') {
         return (
             <KaderLayout headerTitle="Pengaturan Akun">

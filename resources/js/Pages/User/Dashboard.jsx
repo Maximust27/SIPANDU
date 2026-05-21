@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Heart, 
   Activity, 
@@ -10,7 +10,8 @@ import {
   ShieldCheck, 
   ArrowRight, 
   Sparkles,
-  LayoutDashboard
+  LayoutDashboard,
+  Baby
 } from 'lucide-react';
 
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
@@ -48,20 +49,76 @@ const dashboardStyles = `
   }
 `;
 
-export default function Dashboard({ auth }) {
+export default function Dashboard({ auth, dataAnak = [], next_schedule = null, articles = [], activeQueue = null }) {
     // Data user asli dari Laravel backend
     const userName = auth?.user?.name || 'Bunda'; 
+
+    // State untuk memilih anak yang aktif ditampilkan data & analisanya
+    const [selectedChildId, setSelectedChildId] = useState(dataAnak[0]?.id || null);
+    const selectedChild = dataAnak.find(c => c.id === selectedChildId) || dataAnak[0];
+
+    // Menentukan menu resep berdasarkan status gizi anak
+    const getNutritionalRecipe = (child) => {
+        if (!child) return {
+            title: "Menu Gizi Seimbang",
+            dish: "Puree Alpukat & Pisang Halus",
+            desc: "Pilihan terbaik kaya lemak baik dan vitamin untuk perkembangan motorik anak usia dini."
+        };
+
+        const statusLower = child.status_tinggi?.toLowerCase() || '';
+        const giziLower = child.status?.toLowerCase() || '';
+
+        if (statusLower.includes('stunted') || statusLower.includes('pendek')) {
+            return {
+                title: "Menu Kejar Tinggi Badan (Stunting)",
+                dish: "Nasi Tim Hati Ayam & Kuning Telur",
+                desc: "Asupan padat protein hewani, zinc, dan zat besi untuk merangsang sel pertumbuhan tulang anak."
+            };
+        } else if (giziLower.includes('buruk') || giziLower.includes('kurang')) {
+            return {
+                title: "Menu Booster Berat Badan",
+                dish: "Sop Udang Brokoli & Kentang Puree Mentega",
+                desc: "Sajian berkalori tinggi dengan lemak sehat dan protein lengkap untuk menaikkan berat badan balita."
+            };
+        } else {
+            return {
+                title: "Menu Pertumbuhan Optimal",
+                dish: "Puree Jagung Manis & Fillet Dada Ayam",
+                desc: "Kombinasi tinggi karbohidrat kompleks dan protein tanpa lemak yang pas untuk energi harian anak."
+            };
+        }
+    };
+
+    const recipe = getNutritionalRecipe(selectedChild);
 
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex items-center gap-3">
-                    <div className="bg-violet-100 p-2 rounded-xl text-violet-600">
-                        <LayoutDashboard size={22} />
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-violet-100 p-2 rounded-xl text-violet-600">
+                            <LayoutDashboard size={22} />
+                        </div>
+                        <h2 className="text-xl font-bold leading-tight text-gray-900">
+                            Dashboard Pemantauan
+                        </h2>
                     </div>
-                    <h2 className="text-xl font-bold leading-tight text-gray-900">
-                        Dashboard Pemantauan
-                    </h2>
+
+                    {/* Dropdown Pemilihan Balita jika Balita > 1 */}
+                    {dataAnak.length > 1 && (
+                        <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-gray-200 shadow-sm self-start sm:self-auto">
+                            <span className="text-xs font-bold text-gray-400 uppercase">Anak:</span>
+                            <select 
+                                value={selectedChildId || ''} 
+                                onChange={(e) => setSelectedChildId(Number(e.target.value))}
+                                className="text-xs font-bold text-gray-700 bg-transparent border-none p-0 pr-8 focus:ring-0 cursor-pointer"
+                            >
+                                {dataAnak.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
                 </div>
             }
         >
@@ -102,13 +159,29 @@ export default function Dashboard({ auth }) {
                             <div className="bg-emerald-50 p-4 rounded-2xl text-emerald-600 transition-transform group-hover:scale-110 duration-300">
                                 <Activity size={26} />
                             </div>
-                            <div className="space-y-0.5 flex-1">
+                            <div className="space-y-0.5 flex-1 min-w-0">
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Status Anak</p>
                                 <div className="flex gap-3 items-baseline">
-                                    <h4 className="text-lg font-bold text-gray-900">Sehat Normal</h4>
+                                    <h4 className="text-base font-bold text-gray-900 truncate">
+                                        {selectedChild ? selectedChild.name : 'Tidak Ada Balita'}
+                                    </h4>
                                 </div>
-                                <p className="text-xs text-emerald-600 font-medium flex items-center gap-1.5 mt-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Gizi Baik (BB: 12.4kg)
+                                <p className="text-xs text-emerald-600 font-semibold flex items-center gap-1.5 mt-1 truncate">
+                                    {selectedChild ? (
+                                        selectedChild.has_measurement ? (
+                                            <>
+                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> 
+                                                {`${selectedChild.status} (BB: ${selectedChild.last_weight}kg)`}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                                Belum Ada Pengukuran Terverifikasi
+                                            </>
+                                        )
+                                    ) : (
+                                        'Daftarkan Balita di Menu Balita'
+                                    )}
                                 </p>
                             </div>
                         </div>
@@ -120,24 +193,36 @@ export default function Dashboard({ auth }) {
                             </div>
                             <div className="space-y-1">
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Jadwal Posyandu</p>
-                                <h4 className="text-base font-bold text-gray-900">15 Juni 2026</h4>
-                                <span className="text-xs font-semibold text-violet-700 bg-violet-100/50 px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5 mt-1">
-                                    <Clock size={12} /> 08:00 - Selesai
+                                <h4 className="text-base font-bold text-gray-900 truncate">
+                                    {next_schedule ? next_schedule.date_display : 'Belum Ada Jadwal'}
+                                </h4>
+                                <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5 mt-1 ${
+                                    next_schedule ? 'text-violet-700 bg-violet-100/50' : 'text-gray-500 bg-gray-100'
+                                }`}>
+                                    <Clock size={12} /> {next_schedule ? `${next_schedule.time}` : 'Tutup'}
                                 </span>
                             </div>
                         </div>
 
-                        {/* 3. Reminder */}
+                        {/* 3. Reminder / Tiket Antrian */}
                         <div className="bg-white/80 backdrop-blur-sm p-6 rounded-3xl border border-white shadow-sm flex items-center gap-5 hover:shadow-md hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-20 h-20 bg-rose-50/50 rounded-bl-full -z-10 transition-transform group-hover:scale-110 duration-500"></div>
                             <div className="bg-rose-50 p-4 rounded-2xl text-rose-500 transition-transform group-hover:scale-110 duration-300">
                                 <AlertCircle size={26} />
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-1 flex-1 min-w-0">
                                 <p className="text-xs font-bold text-rose-400 uppercase tracking-wider">Reminder Penting</p>
-                                <h4 className="text-base font-bold text-gray-900">Bawa Buku KIA!</h4>
-                                <p className="text-xs text-gray-500 leading-tight mt-1 pr-2">
-                                    Bulan ini jadwal Imunisasi DPT. Jangan lupa ya Bun!
+                                <h4 className="text-base font-bold text-gray-900 truncate">
+                                    {activeQueue ? `Tiket: ${activeQueue.ticket_code}` : 'Bawa Buku KIA!'}
+                                </h4>
+                                <p className="text-xs text-gray-500 leading-tight mt-1 truncate pr-2">
+                                    {activeQueue ? (
+                                        `Antrian #${activeQueue.queue_number} (${activeQueue.child_name}) - ${activeQueue.status}`
+                                    ) : next_schedule ? (
+                                        `Kegiatan di ${next_schedule.location}. Siapkan buku KIA!`
+                                    ) : (
+                                        'Selalu bawa buku KIA untuk pencatatan imunisasi dan timbangan balita.'
+                                    )}
                                 </p>
                             </div>
                         </div>
@@ -164,51 +249,79 @@ export default function Dashboard({ auth }) {
                                         <p className="text-sm text-gray-500 mt-0.5">Berdasarkan rekam medis terakhir anak Anda</p>
                                     </div>
                                 </div>
-                                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-violet-50 rounded-full border border-violet-100">
-                                    <span className="w-2 h-2 rounded-full bg-violet-500 animate-ai-pulse"></span>
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-violet-700">
-                                        Live Insight
-                                    </span>
-                                </div>
+                                {selectedChild && (
+                                    <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border ${
+                                        selectedChild.ai_risk === 'Berisiko Stunting' ? 'bg-rose-50 border-rose-100 text-rose-700' :
+                                        selectedChild.ai_risk === 'Masalah Gizi' ? 'bg-orange-50 border-orange-100 text-orange-700' :
+                                        selectedChild.has_measurement ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                        'bg-gray-50 border-gray-100 text-gray-700'
+                                    }`}>
+                                        <span className={`w-2 h-2 rounded-full ${
+                                            selectedChild.ai_risk === 'Berisiko Stunting' ? 'bg-rose-500 animate-pulse' :
+                                            selectedChild.ai_risk === 'Masalah Gizi' ? 'bg-orange-500 animate-pulse' :
+                                            selectedChild.has_measurement ? 'bg-emerald-500' :
+                                            'bg-gray-400'
+                                        }`}></span>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">
+                                            {selectedChild.ai_risk}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
 
                             {/* List Notifikasi AI */}
                             <div className="space-y-4 relative z-10">
-                                {/* Insight 1: Pertumbuhan */}
-                                <div className="group flex flex-col sm:flex-row gap-4 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-violet-200 transition-all duration-300">
-                                    <div className="shrink-0">
-                                        <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                                            <Stethoscope size={22} />
+                                {selectedChild ? (
+                                    <>
+                                        {/* Insight 1: Pertumbuhan */}
+                                        <div className="group flex flex-col sm:flex-row gap-4 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-violet-200 transition-all duration-300">
+                                            <div className="shrink-0">
+                                                <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                                                    <Stethoscope size={22} />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1.5 flex-1">
+                                                <div className="flex items-center justify-between">
+                                                    <h5 className="font-bold text-gray-800 text-base">Analisis Tumbuh Kembang</h5>
+                                                    <span className="text-xs text-gray-400">{selectedChild.age_display}</span>
+                                                </div>
+                                                <p className="text-sm text-gray-600 leading-relaxed">
+                                                    {selectedChild.ai_insight}
+                                                </p>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <div className="flex items-center justify-between">
-                                            <h5 className="font-bold text-gray-800 text-base">Kurva Pertumbuhan Optimal</h5>
-                                            <span className="text-xs text-gray-400">2 hari lalu</span>
-                                        </div>
-                                        <p className="text-sm text-gray-600 leading-relaxed">
-                                            Kenaikan berat badan sebesar <strong className="text-gray-900 font-semibold bg-gray-100 px-1.5 py-0.5 rounded">400 gram</strong> bulan ini sangat baik dan sesuai dengan kurva standar WHO. Pertahankan pola pemberian makan (MPASI) yang sudah berjalan.
-                                        </p>
-                                    </div>
-                                </div>
 
-                                {/* Insight 2: Peringatan/Saran AI */}
-                                <div className="group flex flex-col sm:flex-row gap-4 p-5 bg-orange-50/50 rounded-2xl border border-orange-100 shadow-sm hover:shadow-md hover:border-orange-200 transition-all duration-300">
-                                    <div className="shrink-0">
-                                        <div className="bg-orange-100 text-orange-600 p-3 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                                            <ShieldCheck size={22} />
+                                        {/* Insight 2: Peringatan/Saran AI */}
+                                        <div className="group flex flex-col sm:flex-row gap-4 p-5 bg-orange-50/50 rounded-2xl border border-orange-100 shadow-sm hover:shadow-md hover:border-orange-200 transition-all duration-300">
+                                            <div className="shrink-0">
+                                                <div className="bg-orange-100 text-orange-600 p-3 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                                                    <ShieldCheck size={22} />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1.5 flex-1">
+                                                <div className="flex items-center justify-between">
+                                                    <h5 className="font-bold text-gray-800 text-base">Persiapan Sistem Imun</h5>
+                                                    <span className="text-xs text-orange-400 font-medium">Pengingat</span>
+                                                </div>
+                                                <p className="text-sm text-gray-600 leading-relaxed">
+                                                    {next_schedule ? (
+                                                        `Jadwal Posyandu berikutnya adalah ${next_schedule.date_display} pukul ${next_schedule.time} di ${next_schedule.location}. Pastikan balita cukup istirahat 2 hari sebelum imunisasi.`
+                                                    ) : (
+                                                        'Belum ada jadwal kegiatan posyandu terdekat untuk bulan ini. Pastikan Anda rajin memantau perkembangan balita secara berkala.'
+                                                    )}
+                                                </p>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <div className="flex items-center justify-between">
-                                            <h5 className="font-bold text-gray-800 text-base">Persiapan Sistem Imun</h5>
-                                            <span className="text-xs text-orange-400 font-medium">Segera</span>
-                                        </div>
-                                        <p className="text-sm text-gray-600 leading-relaxed">
-                                            Berdasarkan jadwal, minggu depan adalah waktu imunisasi. Disarankan untuk memastikan anak cukup istirahat 2 hari sebelum jadwal untuk mengurangi risiko demam pasca-imunisasi.
+                                    </>
+                                ) : (
+                                    <div className="group flex flex-col items-center justify-center p-8 bg-white rounded-2xl border border-dashed border-gray-300 text-center">
+                                        <Baby size={48} className="text-gray-400 mb-3" />
+                                        <h5 className="font-bold text-gray-800 text-base">Belum Ada Balita Terdaftar</h5>
+                                        <p className="text-sm text-gray-500 max-w-sm mt-1 mb-4">
+                                            Silakan daftarkan balita Anda di menu Kelola Balita terlebih dahulu untuk memulai pemantauan tumbuh kembang secara terpadu.
                                         </p>
                                     </div>
-                                </div>
+                                )}
                             </div>
                         </div>
 
@@ -232,39 +345,53 @@ export default function Dashboard({ auth }) {
                                         <div className="w-10 h-10 bg-white text-orange-500 rounded-xl flex items-center justify-center shadow-sm">
                                             <Utensils size={18} />
                                         </div>
-                                        <h5 className="font-bold text-gray-900 text-sm pr-4">Puree Jagung Manis & Daging Ayam</h5>
+                                        <div className="text-left">
+                                            <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wider">{recipe.title}</p>
+                                            <h5 className="font-bold text-gray-900 text-sm pr-4 truncate max-w-[180px]">{recipe.dish}</h5>
+                                        </div>
                                     </div>
                                     
-                                    <p className="text-sm text-gray-600 leading-relaxed relative z-10">
-                                        Kombinasi tinggi protein hewani dan karbohidrat yang pas untuk pembentukan sel saraf balita.
+                                    <p className="text-xs text-gray-600 leading-relaxed relative z-10">
+                                        {recipe.desc}
                                     </p>
                                     
-                                    <button className="inline-flex items-center justify-center w-full gap-2 py-2.5 bg-white border border-orange-100 rounded-xl text-sm font-bold text-orange-600 hover:bg-orange-50 hover:text-orange-700 transition-colors relative z-10 group/btn">
-                                        Lihat Resep Lengkap
+                                    <a 
+                                        href={route('ai-assistant.index')}
+                                        className="inline-flex items-center justify-center w-full gap-2 py-2.5 bg-white border border-orange-100 rounded-xl text-sm font-bold text-orange-600 hover:bg-orange-50 hover:text-orange-700 transition-colors relative z-10 group/btn"
+                                    >
+                                        Tanya AI Selengkapnya
                                         <ArrowRight size={16} className="transition-transform group-hover/btn:translate-x-1" />
-                                    </button>
+                                    </a>
                                 </div>
                             </div>
 
-                            {/* Catatan Kader */}
+                            {/* Catatan/Edukasi Terkini */}
                             <div className="bg-white/90 backdrop-blur-sm p-6 md:p-8 rounded-[2rem] border border-white shadow-sm space-y-4 flex-1">
                                 <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                                    <h5 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Pesan Kader</h5>
-                                    <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded-md">Bulan Ini</span>
+                                    <h5 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Edukasi Pilihan</h5>
+                                    <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded-md">Artikel</span>
                                 </div>
                                 
-                                <div className="group p-5 bg-gray-50/80 rounded-2xl border border-gray-100/80 space-y-3 hover:bg-violet-50/50 hover:border-violet-100 transition-all cursor-pointer">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="relative flex h-3 w-3">
-                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
-                                          <span className="relative inline-flex rounded-full h-3 w-3 bg-violet-500"></span>
-                                        </div>
-                                        <span className="text-sm font-bold text-gray-900 group-hover:text-violet-700 transition-colors">Edukasi Motorik Halus</span>
-                                    </div>
-                                    <p className="text-sm text-gray-600 leading-relaxed">
-                                        Perbanyak stimulasi bermain balok atau menyusun puzzle sederhana untuk melatih motorik halus anak di usia 2 tahun.
-                                    </p>
-                                </div>
+                                {articles.length > 0 ? (
+                                    articles.slice(0, 2).map((art, idx) => (
+                                        <a 
+                                            key={idx}
+                                            href={route('education.index')}
+                                            className="block group p-4 bg-gray-50/80 rounded-2xl border border-gray-100/80 space-y-2 hover:bg-violet-50/50 hover:border-violet-100 transition-all"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-violet-600 bg-violet-50 px-2 py-0.5 rounded">
+                                                    {art.category}
+                                                </span>
+                                            </div>
+                                            <h5 className="text-sm font-bold text-gray-900 group-hover:text-violet-700 transition-colors">
+                                                {art.title}
+                                            </h5>
+                                        </a>
+                                    ))
+                                ) : (
+                                    <p className="text-xs text-gray-500">Belum ada artikel edukasi terkini.</p>
+                                )}
                             </div>
 
                         </div>

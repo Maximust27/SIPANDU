@@ -19,37 +19,7 @@ import {
 import { Head } from '@inertiajs/react';
 import KaderLayout from '@/Layouts/KaderLayout';
 
-// --- DUMMY DATA ---
-const dummyRegionStats = [
-    { rt: 'RT 03', rw: '03', tinggi: 12, sedang: 5, normal: 30, color: 'rose' },
-    { rt: 'RT 01', rw: '03', tinggi: 5, sedang: 8, normal: 42, color: 'orange' },
-    { rt: 'RT 02', rw: '03', tinggi: 2, sedang: 4, normal: 38, color: 'amber' },
-];
-
-const dummyAtRiskChildren = [
-    {
-        id: 1,
-        name: 'Bima Satria',
-        age: '2 Tahun 5 Bulan',
-        region: 'RT 03 / RW 03',
-        metrics: { bb: '9.4 kg', tb: '81.0 cm' },
-        aiDetection: 'Berat badan stagnan selama 2 bulan. Tinggi badan di bawah kurva normal (-2 SD).',
-        riskLevel: 'Tinggi', // Tinggi, Sedang, Rendah
-        aiRecommendation: 'Segera rujuk ke Puskesmas. Berikan PMT (Pemberian Makanan Tambahan) tinggi protein hewani setiap hari. Edukasi gizi intensif untuk ibu.'
-    },
-    {
-        id: 2,
-        name: 'Clara Putri',
-        age: '1 Tahun 2 Bulan',
-        region: 'RT 01 / RW 03',
-        metrics: { bb: '7.8 kg', tb: '72.5 cm' },
-        aiDetection: 'Kenaikan berat badan melambat (hanya +100g dari bulan lalu). Perkembangan motorik belum optimal sesuai usia.',
-        riskLevel: 'Sedang',
-        aiRecommendation: 'Pantau ketat di posyandu bulan depan. Evaluasi pola MPASI harian. Sarankan variasi menu dengan tambahan lemak sehat (santan/minyak zaitun).'
-    }
-];
-
-export default function AIMonitoring() {
+export default function AIMonitoring({ riskyChildren = [], normalChildren = [], noDataChildren = [], regionStats = [], summary = { total: 0, risiko: 0, normal: 0, belumData: 0 } }) {
     // State untuk AI Scan KIA
     const [isScanning, setIsScanning] = useState(false);
     const [scanComplete, setScanComplete] = useState(false);
@@ -218,39 +188,45 @@ export default function AIMonitoring() {
                             <p className="text-xs text-gray-500 mb-6">Tren kasus berisiko stunting per RT/RW bulan ini.</p>
 
                             <div className="space-y-5">
-                                {dummyRegionStats.map((stat, idx) => (
-                                    <div key={idx} className="space-y-2">
-                                        <div className="flex justify-between items-center text-sm font-bold text-gray-800">
-                                            <span>{stat.rt}</span>
-                                            <span className={`text-${stat.color}-600 bg-${stat.color}-50 px-2 py-0.5 rounded-md`}>
-                                                {stat.tinggi} Risiko Tinggi
-                                            </span>
+                                {regionStats.map((stat, idx) => {
+                                    const totalVal = stat.tinggi + stat.sedang + stat.normal;
+                                    const tinggiPct = totalVal > 0 ? (stat.tinggi / totalVal) * 100 : 0;
+                                    const sedangPct = totalVal > 0 ? (stat.sedang / totalVal) * 100 : 0;
+                                    const normalPct = totalVal > 0 ? (stat.normal / totalVal) * 100 : 0;
+                                    return (
+                                        <div key={idx} className="space-y-2">
+                                            <div className="flex justify-between items-center text-sm font-bold text-gray-800">
+                                                <span>{stat.rt}</span>
+                                                <span className={`text-${stat.color}-600 bg-${stat.color}-50 px-2 py-0.5 rounded-md`}>
+                                                    {stat.tinggi} Risiko Tinggi
+                                                </span>
+                                            </div>
+                                            
+                                            {/* Progress Bar Kombinasi (Mock Grafik) */}
+                                            <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden flex">
+                                                <div 
+                                                    className={`h-full bg-${stat.color}-500`} 
+                                                    style={{ width: `${tinggiPct}%` }}
+                                                    title="Risiko Tinggi"
+                                                ></div>
+                                                <div 
+                                                    className="h-full bg-amber-400" 
+                                                    style={{ width: `${sedangPct}%` }}
+                                                    title="Risiko Sedang"
+                                                ></div>
+                                                <div 
+                                                    className="h-full bg-emerald-400" 
+                                                    style={{ width: `${normalPct}%` }}
+                                                    title="Normal"
+                                                ></div>
+                                            </div>
+                                            <div className="flex justify-between text-[10px] font-bold text-gray-400">
+                                                <span>Normal: {stat.normal}</span>
+                                                <span>Waspada: {stat.sedang}</span>
+                                            </div>
                                         </div>
-                                        
-                                        {/* Progress Bar Kombinasi (Mock Grafik) */}
-                                        <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden flex">
-                                            <div 
-                                                className={`h-full bg-${stat.color}-500`} 
-                                                style={{ width: `${(stat.tinggi / (stat.tinggi+stat.sedang+stat.normal)) * 100}%` }}
-                                                title="Risiko Tinggi"
-                                            ></div>
-                                            <div 
-                                                className="h-full bg-amber-400" 
-                                                style={{ width: `${(stat.sedang / (stat.tinggi+stat.sedang+stat.normal)) * 100}%` }}
-                                                title="Risiko Sedang"
-                                            ></div>
-                                            <div 
-                                                className="h-full bg-emerald-400" 
-                                                style={{ width: `${(stat.normal / (stat.tinggi+stat.sedang+stat.normal)) * 100}%` }}
-                                                title="Normal"
-                                            ></div>
-                                        </div>
-                                        <div className="flex justify-between text-[10px] font-bold text-gray-400">
-                                            <span>Normal: {stat.normal}</span>
-                                            <span>Waspada: {stat.sedang}</span>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -268,37 +244,42 @@ export default function AIMonitoring() {
                                 <p className="text-sm text-gray-500 mt-1">Balita yang membutuhkan intervensi segera berdasarkan algoritma WHO.</p>
                             </div>
                             <div className="bg-rose-50 text-rose-600 px-3 py-1.5 rounded-xl text-xs font-bold border border-rose-100">
-                                2 Kasus Ditemukan
+                                {riskyChildren.length} Kasus Ditemukan
                             </div>
                         </div>
 
                         <div className="space-y-6">
-                            {dummyAtRiskChildren.map((child) => (
-                                <div key={child.id} className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-                                    
-                                    {/* Header Card Anak */}
-                                    <div className="p-6 border-b border-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-14 h-14 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl border border-white shadow-inner flex items-center justify-center font-black text-xl text-gray-600">
-                                                {child.name.charAt(0)}
-                                            </div>
-                                            <div>
-                                                <h4 className="text-lg font-black text-gray-900">{child.name}</h4>
-                                                <p className="text-xs text-gray-500 font-medium">{child.age} • {child.region}</p>
-                                            </div>
-                                        </div>
+                            {riskyChildren.length === 0 ? (
+                                <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-8 text-center text-gray-500 font-medium">
+                                    Tidak ada balita berisiko stunting atau gizi bermasalah yang terdeteksi di wilayah ini.
+                                </div>
+                            ) : (
+                                riskyChildren.map((child) => (
+                                    <div key={child.id} className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden flex flex-col">
                                         
-                                        <div className="flex gap-2">
-                                            <div className="bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-lg text-center">
-                                                <p className="text-[10px] text-gray-400 font-bold uppercase">BB Terakhir</p>
-                                                <p className="text-sm font-black text-gray-800">{child.metrics.bb}</p>
+                                        {/* Header Card Anak */}
+                                        <div className="p-6 border-b border-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-14 h-14 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl border border-white shadow-inner flex items-center justify-center font-black text-xl text-gray-600">
+                                                    {child.name.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-lg font-black text-gray-900">{child.name}</h4>
+                                                    <p className="text-xs text-gray-500 font-medium">{child.ageStr} • {child.region}</p>
+                                                </div>
                                             </div>
-                                            <div className="bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-lg text-center">
-                                                <p className="text-[10px] text-gray-400 font-bold uppercase">TB Terakhir</p>
-                                                <p className="text-sm font-black text-gray-800">{child.metrics.tb}</p>
+                                            
+                                            <div className="flex gap-2">
+                                                <div className="bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-lg text-center">
+                                                    <p className="text-[10px] text-gray-400 font-bold uppercase">BB Terakhir</p>
+                                                    <p className="text-sm font-black text-gray-800">{child.lastWeight} kg</p>
+                                                </div>
+                                                <div className="bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-lg text-center">
+                                                    <p className="text-[10px] text-gray-400 font-bold uppercase">TB Terakhir</p>
+                                                    <p className="text-sm font-black text-gray-800">{child.lastHeight} cm</p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
                                     {/* Fitur A & B: Deteksi AI */}
                                     <div className={`p-6 border-b ${child.riskLevel === 'Tinggi' ? 'bg-rose-50/30 border-rose-50' : 'bg-orange-50/30 border-orange-50'}`}>
@@ -347,7 +328,7 @@ export default function AIMonitoring() {
                                     </div>
 
                                 </div>
-                            ))}
+                            )))}
                         </div>
 
                     </div>

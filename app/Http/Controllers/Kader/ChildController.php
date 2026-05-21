@@ -3,110 +3,199 @@
 namespace App\Http\Controllers\Kader;
 
 use App\Http\Controllers\Controller;
+use App\Models\Child;
+use App\Models\Measurement;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Carbon\Carbon;
 
 class ChildController extends Controller
 {
     /**
-     * Menampilkan halaman kelola data anak & orang tua dengan mock data (Tanpa Database).
+     * Tampilkan daftar anak di wilayah kader ini (berdasarkan posyandu atau kelurahan)
      */
     public function index()
     {
-        // Mock data agar halaman ChildrenManagement bisa langsung tampil rapi tanpa error database
-        $mockChildren = [
-            [
-                'id' => 1,
-                'name' => 'Leon Alfarizi',
-                'nik' => '3301021203240001',
-                'gender' => 'Laki-laki',
-                'birth_date' => '2024-03-12',
-                'age_str' => '2 Tahun 3 Bln',
-                'father_name' => 'Ahmad Faisal',
-                'mother_name' => 'Sarah Amelia',
-                'phone' => '081234567890',
-                'address' => 'Balai Desa Sukamaju, RT 02/RW 03, Cilacap',
-                'status' => 'Terverifikasi',
-                'pending_verification' => null,
-                'history' => [
-                    ['id' => 101, 'date' => '2026-05-10', 'weight' => 12.4, 'height' => 88.5, 'head_circulation' => 48.2, 'notes' => 'Imunisasi DPT Lanjutan, gizi sangat baik'],
-                    ['id' => 102, 'date' => '2026-04-12', 'weight' => 12.0, 'height' => 87.5, 'head_circulation' => 48.0, 'notes' => 'Pengukuran rutin bulanan'],
-                    ['id' => 103, 'date' => '2026-03-15', 'weight' => 11.5, 'height' => 86.5, 'head_circulation' => 47.8, 'notes' => 'Pengukuran rutin bulanan']
-                ]
-            ],
-            [
-                'id' => 2,
-                'name' => 'Ayesha Zahra',
-                'nik' => '3301020510250002',
-                'gender' => 'Perempuan',
-                'birth_date' => '2025-10-05',
-                'age_str' => '7 Bulan',
-                'father_name' => 'Rian Hidayat',
-                'mother_name' => 'Nisa Rahmawati',
-                'phone' => '085799881122',
-                'address' => 'Balai Desa Sukamaju, RT 01/RW 03, Cilacap',
-                'status' => 'Butuh Verifikasi',
-                'pending_verification' => [
-                    'weight' => 7.8,
-                    'height' => 68.2,
-                    'head_circulation' => 43.5,
-                    'date' => '2026-05-18',
-                    'submitted_by' => 'Bunda (User Input)'
-                ],
-                'history' => [
-                    ['id' => 201, 'date' => '2026-04-10', 'weight' => 7.5, 'height' => 67.0, 'head_circulation' => 43.0, 'notes' => 'Imunisasi BCG, sehat'],
-                    ['id' => 202, 'date' => '2026-03-12', 'weight' => 7.0, 'height' => 65.5, 'head_circulation' => 42.5, 'notes' => 'Pengukuran rutin']
-                ]
-            ],
-            [
-                'id' => 3,
-                'name' => 'Bima Satria',
-                'nik' => '3301021812230003',
-                'gender' => 'Laki-laki',
-                'birth_date' => '2023-12-18',
-                'age_str' => '2 Tahun 5 Bln',
-                'father_name' => 'Doni Setiawan',
-                'mother_name' => 'Dina Lestari',
-                'phone' => '081399887766',
-                'address' => 'Balai Desa Sukamaju, RT 03/RW 03, Cilacap',
-                'status' => 'Terverifikasi',
-                'pending_verification' => null,
-                'history' => [
-                    ['id' => 301, 'date' => '2026-05-08', 'weight' => 14.2, 'height' => 92.0, 'head_circulation' => 50.1, 'notes' => 'Sehat walafiat, aktif']
-                ]
-            ]
-        ];
+        $kader = Auth::user();
+
+        // Query anak di wilayah kader (berdasarkan posyandu atau kelurahan)
+        $query = Child::with(['parent', 'measurements' => function ($q) {
+            $q->latest('measured_at');
+        }]);
+
+        if ($kader->posyandu_id) {
+            $query->where('posyandu_id', $kader->posyandu_id);
+        } elseif ($kader->kelurahan) {
+            $query->whereHas('parent', fn($q) => $q->where('kelurahan', $kader->kelurahan));
+        }
+
+        $children = $query->latest()->get()->map(function ($child) {
+            $lastMeasurement = $child->measurements->first();
+            $pendingMeasurements = $child->measurements->where('is_verified', false);
+
+            return [
+                'id'          => $child->id,
+                'name'        => $child->name,
+                'nik'         => $child->nik,
+                'gender'      => $child->gender,
+                'birth_date'  => $child->birth_date?->format('Y-m-d'),
+                'age_str'     => $child->age_display,
+                'father_name' => $child->father_name,
+                'mother_name' => $child->mother_name,
+                'phone'       => $child->parent?->phone,
+                'address'     => $child->parent?->address,
+                'status'      => $child->status,
+                'pending_verification' => $pendingMeasurements->isNotEmpty() ? [
+                    'id'           => $pendingMeasurements->first()->id,
+                    'weight'       => $pendingMeasurements->first()->weight,
+                    'height'       => $pendingMeasurements->first()->height,
+                    'head_circulation' => $pendingMeasurements->first()->head_circumference,
+                    'date'         => $pendingMeasurements->first()->measured_at?->format('Y-m-d'),
+                    'submitted_by' => 'Bunda (Input Mandiri)',
+                ] : null,
+                'history' => $child->measurements->where('is_verified', true)->take(5)->map(fn($m) => [
+                    'id'               => $m->id,
+                    'date'             => $m->measured_at?->format('Y-m-d'),
+                    'weight'           => $m->weight,
+                    'height'           => $m->height,
+                    'head_circulation' => $m->head_circumference,
+                    'notes'            => $m->notes,
+                ])->values(),
+            ];
+        });
 
         return Inertia::render('Kader/ChildrenManagement', [
-            'initialChildren' => $mockChildren
+            'initialChildren' => $children,
         ]);
     }
 
     /**
-     * Simulasi menyimpan data balita & orang tua baru ke database.
+     * Simpan data anak baru oleh Kader
      */
     public function store(Request $request)
     {
-        return redirect()->back()->with('message', 'Simulasi: Data anak berhasil didaftarkan (Tanpa Database)!');
+        $request->validate([
+            'nik'         => 'nullable|string|max:20|unique:children,nik',
+            'name'        => 'required|string|max:255',
+            'gender'      => 'required|in:Laki-laki,Perempuan',
+            'birth_date'  => 'required|date|before:today',
+            'father_name' => 'nullable|string|max:255',
+            'mother_name' => 'required|string|max:255',
+            'phone'       => 'required|string|max:20',
+            'address'     => 'nullable|string|max:500',
+        ]);
+
+        $kader = Auth::user();
+
+        // Cari atau buat User Bunda (pengguna) berdasarkan phone/email
+        $email = $request->phone . '@sipandu.id';
+        $user = User::where('phone', $request->phone)
+            ->orWhere('email', $email)
+            ->first();
+
+        if (!$user) {
+            $user = User::create([
+                'name'       => $request->mother_name,
+                'email'      => $email,
+                'phone'      => $request->phone,
+                'role'       => 'pengguna',
+                'status'     => 'aktif',
+                'address'    => $request->address,
+                'kabupaten'  => $kader->kabupaten ?? 'Cilacap',
+                'kecamatan'  => $kader->kecamatan,
+                'kelurahan'  => $kader->kelurahan,
+                'password'   => \Illuminate\Support\Facades\Hash::make('password'),
+            ]);
+        } else {
+            if ($request->address) {
+                $user->update(['address' => $request->address]);
+            }
+        }
+
+        Child::create([
+            'nik'          => $request->nik,
+            'name'         => $request->name,
+            'gender'       => $request->gender,
+            'birth_date'   => $request->birth_date,
+            'father_name'  => $request->father_name,
+            'mother_name'  => $request->mother_name,
+            'user_id'      => $user->id,
+            'posyandu_id'  => $kader->posyandu_id,
+            'status'       => 'Terverifikasi',
+        ]);
+
+        return redirect()->back()->with('success', 'Data anak berhasil didaftarkan.');
     }
 
     /**
-     * Simulasi memperbarui data profil balita & orang tua.
+     * Update profil anak
      */
     public function update(Request $request, $id)
     {
-        return redirect()->back()->with('message', 'Simulasi: Data profil anak berhasil diperbarui (Tanpa Database)!');
+        $child = Child::findOrFail($id);
+
+        $request->validate([
+            'name'        => 'required|string|max:255',
+            'gender'      => 'required|in:Laki-laki,Perempuan',
+            'birth_date'  => 'required|date',
+            'father_name' => 'nullable|string|max:255',
+            'mother_name' => 'nullable|string|max:255',
+            'phone'       => 'nullable|string|max:20',
+            'address'     => 'nullable|string|max:500',
+        ]);
+
+        $child->update($request->only([
+            'nik', 'name', 'gender', 'birth_date', 'father_name', 'mother_name',
+        ]));
+
+        if ($child->parent) {
+            $parentData = [];
+            if ($request->phone) {
+                $parentData['phone'] = $request->phone;
+            }
+            if ($request->address) {
+                $parentData['address'] = $request->address;
+            }
+            if ($request->mother_name) {
+                $parentData['name'] = $request->mother_name;
+            }
+            if (!empty($parentData)) {
+                $child->parent->update($parentData);
+            }
+        }
+
+        return redirect()->back()->with('success', 'Data profil anak berhasil diperbarui.');
     }
 
     /**
-     * Simulasi menyetujui atau menolak input pengukuran mandiri dari Bunda.
+     * Verifikasi atau tolak pengukuran mandiri dari Bunda
      */
     public function verify(Request $request, $id)
     {
-        $message = $request->status === 'approve' 
-            ? 'Simulasi: Pengukuran berhasil disetujui (Tanpa Database)!' 
-            : 'Simulasi: Pengukuran berhasil ditolak (Tanpa Database)!';
+        $request->validate([
+            'status'         => 'required|in:approve,reject',
+            'measurement_id' => 'required|exists:measurements,id',
+        ]);
 
-        return redirect()->back()->with('message', $message);
+        $measurement = \App\Models\Measurement::findOrFail($request->measurement_id);
+        $child       = Child::findOrFail($id);
+
+        if ($request->status === 'approve') {
+            $measurement->update([
+                'is_verified' => true,
+                'verified_at' => now(),
+                'kader_id'    => Auth::id(),
+            ]);
+            $child->update(['status' => 'Terverifikasi']);
+            $message = 'Pengukuran berhasil disetujui dan dicatat.';
+        } else {
+            $measurement->delete();
+            $child->update(['status' => 'Terverifikasi']);
+            $message = 'Pengukuran berhasil ditolak dan dihapus.';
+        }
+
+        return redirect()->back()->with('success', $message);
     }
 }

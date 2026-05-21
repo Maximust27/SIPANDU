@@ -21,7 +21,7 @@ import {
   Filter
 } from 'lucide-react';
 
-export default function UserManagement({ initialUsers = [] }) {
+export default function UserManagement({ initialUsers = [], posyanduList = [] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('Semua');
   const [statusFilter, setStatusFilter] = useState('Semua');
@@ -35,7 +35,7 @@ export default function UserManagement({ initialUsers = [] }) {
 
   // Inertia Form Hook
   const { data, setData, post, put, delete: destroy, errors, reset, processing } = useForm({
-    id: '', name: '', email: '', phone: '', address: '', role: 'kader', status: 'aktif'
+    id: '', name: '', email: '', phone: '', address: '', role: 'kader', posyandu_id: '', status: 'aktif'
   });
 
   // Memastikan data aman
@@ -43,10 +43,10 @@ export default function UserManagement({ initialUsers = [] }) {
 
   // --- STATISTIK DINAMIS ---
   const stats = {
-    totalBunda: safeUsers.filter(u => u.role === 'user').length,
+    totalBunda: safeUsers.filter(u => u.role === 'pengguna').length,
     kaderAktif: safeUsers.filter(u => u.role === 'kader' && u.status === 'aktif').length,
     akunNonaktif: safeUsers.filter(u => u.status === 'nonaktif').length,
-    totalPosyandu: 45 // Angka statis (dikarenakan beda tabel)
+    totalPosyandu: posyanduList.length
   };
 
   // --- FILTER DATA ---
@@ -82,6 +82,7 @@ export default function UserManagement({ initialUsers = [] }) {
       phone: user.phone || '',
       address: user.address || '',
       role: user.role || 'kader',
+      posyandu_id: user.posyandu_id || '',
       status: user.status || 'aktif'
     });
     setIsModalOpen(true);
@@ -121,7 +122,7 @@ export default function UserManagement({ initialUsers = [] }) {
   };
 
   const handleResetPassword = (id) => {
-    openConfirm('Reset Password', 'Password akun ini akan dikembalikan ke sandi standar: bismillah123. Lanjutkan?', false, () => {
+    openConfirm('Reset Password', 'Password akun ini akan dikembalikan ke sandi standar: password. Lanjutkan?', false, () => {
       router.post(route('admin.users.reset-password', id));
     });
   };
@@ -230,7 +231,7 @@ export default function UserManagement({ initialUsers = [] }) {
               >
                 <option value="Semua">Semua Peran</option>
                 <option value="kader">Kader Posyandu</option>
-                <option value="user">Bunda (User)</option>
+                <option value="pengguna">Bunda (User)</option>
               </select>
             </div>
 
@@ -279,7 +280,14 @@ export default function UserManagement({ initialUsers = [] }) {
                           </div>
                           <div>
                             <p className="font-bold text-slate-900 text-base">{user.name}</p>
-                            <p className="text-xs text-slate-400 font-medium mt-0.5">{user.email || 'Email belum diatur'}</p>
+                            <p className="text-xs text-slate-400 font-medium mt-0.5">
+                              {user.email || 'Email belum diatur'}
+                              {user.role === 'kader' && (
+                                <span className="block text-[11px] text-emerald-600 font-semibold mt-0.5">
+                                  Tugas: {user.posyandu || 'Belum Ditugaskan'}
+                                </span>
+                              )}
+                            </p>
                           </div>
                         </div>
                       </td>
@@ -333,15 +341,13 @@ export default function UserManagement({ initialUsers = [] }) {
                             <Key size={16} />
                           </button>
 
-                          {user.role === 'kader' && (
-                            <button 
-                              onClick={() => handleOpenEditModal(user)}
-                              className="p-2.5 bg-white hover:bg-blue-50 text-slate-500 hover:text-blue-600 rounded-xl border border-slate-200 hover:border-blue-200 transition-colors shadow-sm"
-                              title="Edit Profil Kader"
-                            >
-                              <Edit3 size={16} />
-                            </button>
-                          )}
+                          <button 
+                            onClick={() => handleOpenEditModal(user)}
+                            className="p-2.5 bg-white hover:bg-blue-50 text-slate-500 hover:text-blue-600 rounded-xl border border-slate-200 hover:border-blue-200 transition-colors shadow-sm"
+                            title="Edit Profil Pengguna"
+                          >
+                            <Edit3 size={16} />
+                          </button>
 
                           <button 
                             onClick={() => handleDeleteUser(user.id)}
@@ -368,7 +374,7 @@ export default function UserManagement({ initialUsers = [] }) {
           <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 max-w-xl w-full overflow-hidden animate-slide-down">
             <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50 to-blue-50/30">
               <div>
-                <h4 className="text-lg font-bold text-slate-900">{isEditMode ? 'Edit Akun Kader' : 'Registrasi Akun Kader Baru'}</h4>
+                <h4 className="text-lg font-bold text-slate-900">{isEditMode ? (data.role === 'kader' ? 'Edit Akun Kader' : 'Edit Akun Bunda') : 'Registrasi Akun Kader Baru'}</h4>
                 <p className="text-xs text-slate-500">Isi formulir data penugasan kader posyandu secara valid.</p>
               </div>
               <button onClick={() => setIsModalOpen(false)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors">
@@ -397,6 +403,28 @@ export default function UserManagement({ initialUsers = [] }) {
                   <label className="text-xs font-bold text-slate-600">Alamat Tempat Tinggal</label>
                   <textarea rows={2} required value={data.address} onChange={e => setData('address', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 text-sm outline-none transition-all resize-none" placeholder="Alamat lengkap domisili kader..." />
                   {errors.address && <p className="text-xs text-rose-600 font-medium">{errors.address}</p>}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-600">Peran / Role</label>
+                    <select value={data.role} onChange={e => setData('role', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 text-sm outline-none transition-all">
+                      <option value="kader">Kader Posyandu</option>
+                      <option value="pengguna">Bunda (Pengguna)</option>
+                    </select>
+                    {errors.role && <p className="text-xs text-rose-600 font-medium">{errors.role}</p>}
+                  </div>
+                  {data.role === 'kader' && (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-600">Penugasan Posyandu</label>
+                      <select value={data.posyandu_id} onChange={e => setData('posyandu_id', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 text-sm outline-none transition-all">
+                        <option value="">Belum Ditugaskan</option>
+                        {posyanduList.map(p => (
+                          <option key={p.id} value={p.id}>{p.name} ({p.kelurahan})</option>
+                        ))}
+                      </select>
+                      {errors.posyandu_id && <p className="text-xs text-rose-600 font-medium">{errors.posyandu_id}</p>}
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -18,11 +18,7 @@ import {
 import { Head, useForm, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
-export default function PosyanduManagement({ initialPosyandus }) {
-  // Pengecekan aman agar tidak terjadi error ReferenceError saat mock dihapus
-  const [posyanduList, setPosyanduList] = useState(
-    initialPosyandus || (typeof fallbackPosyandus !== 'undefined' ? fallbackPosyandus : [])
-  );
+export default function PosyanduManagement({ initialPosyandu = [] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -35,9 +31,12 @@ export default function PosyanduManagement({ initialPosyandus }) {
   const { data, setData, post, put, delete: destroy, errors, reset, processing } = useForm({
     id: '',
     name: '',
-    location: '',
-    schedule: 'Minggu Pertama',
-    assignedKadersText: '' // Simplified for UI: comma separated names
+    kelurahan: '',
+    kecamatan: '',
+    address: '',
+    contact: '',
+    quota_per_session: 50,
+    status: 'aktif'
   });
 
   const showToast = (message, type = 'success') => {
@@ -46,9 +45,16 @@ export default function PosyanduManagement({ initialPosyandus }) {
   };
 
   // Filter Search
-  const filteredPosyandus = posyanduList.filter(p => {
+  const filteredPosyandus = initialPosyandu.filter(p => {
     const term = searchQuery.toLowerCase();
-    return p.name.toLowerCase().includes(term) || p.location.toLowerCase().includes(term);
+    const name = p.name || '';
+    const address = p.address || '';
+    const kelurahan = p.kelurahan || '';
+    const kecamatan = p.kecamatan || '';
+    return name.toLowerCase().includes(term) || 
+           address.toLowerCase().includes(term) || 
+           kelurahan.toLowerCase().includes(term) || 
+           kecamatan.toLowerCase().includes(term);
   });
 
   // Handlers
@@ -62,26 +68,34 @@ export default function PosyanduManagement({ initialPosyandus }) {
     setIsEditMode(true);
     setData({
       id: posyandu.id,
-      name: posyandu.name,
-      location: posyandu.location,
-      schedule: posyandu.schedule,
-      assignedKadersText: posyandu.assignedKaders ? posyandu.assignedKaders.join(', ') : ''
+      name: posyandu.name || '',
+      kelurahan: posyandu.kelurahan || '',
+      kecamatan: posyandu.kecamatan || '',
+      address: posyandu.address || '',
+      contact: posyandu.contact || '',
+      quota_per_session: posyandu.quota_per_session || 50,
+      status: posyandu.status || 'aktif'
     });
     setIsModalOpen(true);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const formattedKaders = data.assignedKadersText.split(',').map(k => k.trim()).filter(k => k);
 
     if (isEditMode) {
-      const updatedList = posyanduList.map(p => p.id === data.id ? { ...p, ...data, assignedKaders: formattedKaders } : p);
-      setPosyanduList(updatedList);
-      put('#', { onSuccess: () => { setIsModalOpen(false); showToast('Data Posyandu berhasil diperbarui!'); }});
+      put(route('admin.posyandu.update', data.id), {
+        onSuccess: () => { 
+          setIsModalOpen(false); 
+          showToast('Data Posyandu berhasil diperbarui!'); 
+        }
+      });
     } else {
-      const newPosyandu = { id: Date.now(), ...data, assignedKaders: formattedKaders };
-      setPosyanduList([newPosyandu, ...posyanduList]);
-      post('#', { onSuccess: () => { setIsModalOpen(false); showToast('Posyandu baru berhasil ditambahkan!'); }});
+      post(route('admin.posyandu.store'), {
+        onSuccess: () => { 
+          setIsModalOpen(false); 
+          showToast('Posyandu baru berhasil ditambahkan!'); 
+        }
+      });
     }
   };
 
@@ -92,10 +106,12 @@ export default function PosyanduManagement({ initialPosyandus }) {
       message: 'Menghapus posyandu ini akan menghilangkan jadwal terkait. Apakah Anda yakin?',
       isWarning: true,
       onConfirm: () => {
-        setPosyanduList(posyanduList.filter(p => p.id !== id));
-        setConfirmModal({ isOpen: false });
-        showToast('Data posyandu berhasil dihapus.', 'error');
-        // destroy(route('admin.posyandu.destroy', id)); // Un-comment di Laravel
+        destroy(route('admin.posyandu.destroy', id), {
+          onSuccess: () => {
+            setConfirmModal({ isOpen: false });
+            showToast('Data posyandu berhasil dihapus.', 'error');
+          }
+        });
       }
     });
   };
@@ -180,16 +196,29 @@ export default function PosyanduManagement({ initialPosyandus }) {
                     </div>
                     <div>
                       <h4 className="font-bold text-slate-900 text-lg leading-tight group-hover:text-blue-700 transition-colors">{pos.name}</h4>
-                      <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><MapPin size={12}/> {pos.location}</p>
+                      <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                        <MapPin size={12}/> {pos.address ? `${pos.address}, ` : ''}Kel. {pos.kelurahan}, Kec. {pos.kecamatan}
+                      </p>
                     </div>
                   </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                    pos.status === 'aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {pos.status}
+                  </span>
                 </div>
 
                 {/* Konten Card */}
                 <div className="p-6 space-y-4 flex-1">
-                  <div className="flex items-center gap-2 text-sm text-slate-700">
-                    <CalendarDays size={16} className="text-blue-500" />
-                    <span className="font-semibold">Jadwal:</span> {pos.schedule}
+                  <div className="grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <span className="text-slate-500 block">Kontak WA/Telp</span>
+                      <span className="font-semibold text-slate-800">{pos.contact || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Kuota Sesi Antrian</span>
+                      <span className="font-semibold text-slate-800">{pos.quota_per_session || 50} Balita</span>
+                    </div>
                   </div>
                   
                   <div className="space-y-2">
@@ -198,15 +227,15 @@ export default function PosyanduManagement({ initialPosyandus }) {
                         <Users size={14}/> Kader Bertugas
                       </span>
                       <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-bold">
-                        {pos.assignedKaders ? pos.assignedKaders.length : 0} Orang
+                        {pos.kaders ? pos.kaders.length : 0} Orang
                       </span>
                     </div>
                     
-                    {pos.assignedKaders && pos.assignedKaders.length > 0 ? (
+                    {pos.kaders && pos.kaders.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5">
-                        {pos.assignedKaders.map((kader, i) => (
-                          <span key={i} className="text-xs bg-emerald-50 border border-emerald-100 text-emerald-700 px-2 py-1 rounded-lg font-medium">
-                            {kader}
+                        {pos.kaders.map((kader) => (
+                          <span key={kader.id} className="text-xs bg-emerald-50 border border-emerald-100 text-emerald-700 px-2 py-1 rounded-lg font-medium">
+                            {kader.name}
                           </span>
                         ))}
                       </div>
@@ -252,28 +281,51 @@ export default function PosyanduManagement({ initialPosyandus }) {
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-600">Nama Posyandu</label>
                   <input type="text" required value={data.name} onChange={e => setData('name', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none text-sm" placeholder="Contoh: Posyandu Melati 1" />
+                  {errors.name && <p className="text-xs text-rose-500">{errors.name}</p>}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-600">Kelurahan</label>
+                    <input type="text" required value={data.kelurahan} onChange={e => setData('kelurahan', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none text-sm" placeholder="Contoh: Donan" />
+                    {errors.kelurahan && <p className="text-xs text-rose-500">{errors.kelurahan}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-600">Kecamatan</label>
+                    <input type="text" required value={data.kecamatan} onChange={e => setData('kecamatan', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none text-sm" placeholder="Contoh: Cilacap Tengah" />
+                    {errors.kecamatan && <p className="text-xs text-rose-500">{errors.kecamatan}</p>}
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-600">Lokasi / Alamat</label>
-                  <textarea required rows={2} value={data.location} onChange={e => setData('location', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none text-sm resize-none" placeholder="Balai Desa / Alamat lengkap..." />
+                  <label className="text-xs font-bold text-slate-600">Alamat Lengkap</label>
+                  <textarea rows={2} value={data.address} onChange={e => setData('address', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none text-sm resize-none" placeholder="Alamat lengkap posyandu..." />
+                  {errors.address && <p className="text-xs text-rose-500">{errors.address}</p>}
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-600">Jadwal Kegiatan Rutin</label>
-                  <select required value={data.schedule} onChange={e => setData('schedule', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none text-sm">
-                    <option value="Minggu Pertama">Minggu Pertama</option>
-                    <option value="Minggu Kedua">Minggu Kedua</option>
-                    <option value="Minggu Ketiga">Minggu Ketiga</option>
-                    <option value="Minggu Keempat">Minggu Keempat</option>
-                  </select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-600">No. Kontak WhatsApp</label>
+                    <input type="text" value={data.contact} onChange={e => setData('contact', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none text-sm" placeholder="Contoh: 08123456789" />
+                    {errors.contact && <p className="text-xs text-rose-500">{errors.contact}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-600">Kuota Per Sesi</label>
+                    <input type="number" required min="1" value={data.quota_per_session} onChange={e => setData('quota_per_session', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none text-sm" />
+                    {errors.quota_per_session && <p className="text-xs text-rose-500">{errors.quota_per_session}</p>}
+                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-600 flex items-center gap-1"><UserPlus size={14}/> Assign Kader (Opsional)</label>
-                  <input type="text" value={data.assignedKadersText} onChange={e => setData('assignedKadersText', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none text-sm" placeholder="Pisahkan dengan koma (cth: Siti, Nisa)" />
-                  <p className="text-[10px] text-slate-400">Tuliskan nama kader yang ditugaskan ke posyandu ini.</p>
-                </div>
+                {isEditMode && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-600">Status Operasional</label>
+                    <select value={data.status} onChange={e => setData('status', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none text-sm">
+                      <option value="aktif">Aktif</option>
+                      <option value="nonaktif">Non-aktif</option>
+                    </select>
+                    {errors.status && <p className="text-xs text-rose-500">{errors.status}</p>}
+                  </div>
+                )}
               </div>
 
               <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">

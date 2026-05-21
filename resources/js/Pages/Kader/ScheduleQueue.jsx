@@ -14,30 +14,27 @@ import {
   ChevronRight,
   Ticket
 } from 'lucide-react';
-import { Head } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import KaderLayout from '@/Layouts/KaderLayout';
 
-// --- DUMMY DATA ANTRIAN ---
-const initialQueue = [
-    { id: 1, no: 'A-01', childName: 'Leon Alfarizi', motherName: 'Sarah Amelia', status: 'Selesai', time: '08:15', agenda: 'Timbang & Ukur' },
-    { id: 2, no: 'A-02', childName: 'Ayesha Zahra', motherName: 'Nisa Rahmawati', status: 'Selesai', time: '08:25', agenda: 'Imunisasi DPT' },
-    { id: 3, no: 'A-03', childName: 'Bima Satria', motherName: 'Dina Lestari', status: 'Diperiksa', time: '08:40', agenda: 'Timbang & Imunisasi' },
-    { id: 4, no: 'A-04', childName: 'Clara Putri', motherName: 'Sinta', status: 'Menunggu', time: '-', agenda: 'Timbang & Ukur' },
-    { id: 5, no: 'A-05', childName: 'Dika Ramadhan', motherName: 'Wati', status: 'Menunggu', time: '-', agenda: 'Imunisasi Polio' },
-    { id: 6, no: 'A-06', childName: 'Rina Anggraini', motherName: 'Yuli', status: 'Menunggu', time: '-', agenda: 'Konsultasi Gizi' },
-];
+// Data diambil dari server melalui Inertia props (tidak ada dummy data lagi)
 
-export default function ScheduleAndQueue() {
-    const [queues, setQueues] = useState(initialQueue);
+export default function ScheduleAndQueue({ initialQueues = [], activeSchedule = null, allSchedules = [] }) {
+    const [queues, setQueues] = useState(initialQueues || []);
     const [searchQuery, setSearchQuery] = useState('');
     const [toastMessage, setToastMessage] = useState(null);
+
+    // Sync queues with updated props from server
+    useEffect(() => {
+        setQueues(initialQueues || []);
+    }, [initialQueues]);
 
     // Form Pembuatan Jadwal Baru
     const [scheduleForm, setScheduleForm] = useState({
         date: '',
         timeStart: '08:00',
         timeEnd: '12:00',
-        location: 'Posyandu Melati 1, Balai Desa Sukamaju',
+        location: activeSchedule ? activeSchedule.location : 'Posyandu Melati 1, Balai Desa Sukamaju',
         agenda: 'Pemantauan Tumbuh Kembang & Imunisasi Rutin'
     });
 
@@ -46,31 +43,32 @@ export default function ScheduleAndQueue() {
         setTimeout(() => setToastMessage(null), 3000);
     };
 
-    // Handler Antrian
+    // Handler Antrian — memanggil ke backend via Inertia
     const handleCallQueue = (id) => {
-        const updatedQueues = queues.map(q => {
-            // Yang sedang diperiksa dikembalikan ke selesai (asumsi) atau dibiarkan
-            if (q.status === 'Diperiksa' && q.id !== id) return q;
-            // Panggil yang baru
-            if (q.id === id) return { ...q, status: 'Diperiksa', time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) };
-            return q;
+        router.patch(route('kader.schedule.call', id), {}, {
+            onSuccess: () => showToast(`Memanggil Antrian ${queues.find(q => q.id === id)?.no || ''}`),
+            preserveScroll: true,
         });
-        setQueues(updatedQueues);
-        showToast(`Memanggil Antrian ${updatedQueues.find(q => q.id === id).no}`);
     };
 
     const handleFinishQueue = (id) => {
-        const updatedQueues = queues.map(q => {
-            if (q.id === id) return { ...q, status: 'Selesai' };
-            return q;
+        router.patch(route('kader.schedule.finish', id), {}, {
+            onSuccess: () => showToast('Pemeriksaan selesai, absensi kehadiran tercatat.'),
+            preserveScroll: true,
         });
-        setQueues(updatedQueues);
-        showToast('Pemeriksaan selesai, absensi kehadiran tercatat.');
     };
 
     const handleBroadcast = (e) => {
         e.preventDefault();
-        showToast('Pengingat Jadwal Posyandu berhasil di-broadcast ke aplikasi para Bunda!', 'broadcast');
+        router.post(route('kader.schedule.store'), {
+            date:      scheduleForm.date,
+            timeStart: scheduleForm.timeStart,
+            timeEnd:   scheduleForm.timeEnd,
+            agenda:    scheduleForm.agenda,
+            location:  scheduleForm.location,
+        }, {
+            onSuccess: () => showToast('Jadwal berhasil dibuat & reminder broadcast ke Bunda!', 'broadcast'),
+        });
     };
 
     // Filter Antrian
@@ -232,6 +230,52 @@ export default function ScheduleAndQueue() {
                                     <span className="text-sm font-bold text-gray-700">Campak Rubella</span>
                                     <span className="text-xs font-black text-rose-600 bg-rose-100 px-2 py-1 rounded-md">Habis</span>
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* KARTU RIWAYAT & JADWAL POSYANDU */}
+                        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm space-y-4">
+                            <h4 className="text-base font-bold text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-50">
+                                <CalendarDays size={18} className="text-indigo-600" /> Riwayat & Jadwal Posyandu
+                            </h4>
+                            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 no-scrollbar">
+                                {allSchedules.length === 0 ? (
+                                    <p className="text-xs text-gray-500 text-center py-4">Belum ada riwayat jadwal.</p>
+                                ) : (
+                                    allSchedules.map((schedule) => {
+                                        const dateStr = new Date(schedule.date).toLocaleDateString('id-ID', {
+                                            day: 'numeric',
+                                            month: 'short',
+                                            year: 'numeric'
+                                        });
+                                        return (
+                                            <div key={schedule.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100 hover:border-indigo-200 transition-colors space-y-2">
+                                                <div className="flex justify-between items-start gap-2">
+                                                    <span className="text-xs font-black text-gray-900">{dateStr}</span>
+                                                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                                                        schedule.status === 'upcoming' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                        schedule.status === 'berlangsung' ? 'bg-orange-50 text-orange-600 border-orange-100 animate-pulse' :
+                                                        schedule.status === 'selesai' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                        'bg-gray-100 text-gray-600 border-gray-200'
+                                                    }`}>
+                                                        {schedule.status === 'upcoming' ? 'Akan Datang' :
+                                                         schedule.status === 'berlangsung' ? 'Berlangsung' :
+                                                         schedule.status === 'selesai' ? 'Selesai' : 'Batal'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-gray-600 line-clamp-2">{schedule.agenda}</p>
+                                                <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold">
+                                                    <span className="flex items-center gap-1">
+                                                        <Clock size={10} /> {schedule.time_start.substring(0, 5)} - {schedule.time_end.substring(0, 5)}
+                                                    </span>
+                                                    <span className="bg-white border border-gray-200 px-1.5 py-0.5 rounded-md text-[10px] font-bold text-gray-600">
+                                                        {schedule.total_antrian} Antrian
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
                             </div>
                         </div>
 

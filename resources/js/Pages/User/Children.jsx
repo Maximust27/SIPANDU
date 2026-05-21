@@ -58,54 +58,43 @@ const pageStyles = `
   }
 `;
 
-// --- MOCK DATA MULTI ANAK ---
-const initialChildrenData = [
-    {
-        id: 1,
-        name: 'Leon Alfarizi',
-        gender: 'Laki-laki',
-        birthDate: '12 Mar 2024',
-        ageStr: '2 Tahun 3 Bln',
-        lastWeight: '12.4 kg',
-        lastHeight: '88.5 cm',
-        history: [
-            { bln: 'Jan', weight: 9.8, height: 83.5 },
-            { bln: 'Feb', weight: 10.2, height: 85.0 },
-            { bln: 'Mar', weight: 11.5, height: 86.5 },
-            { bln: 'Apr', weight: 12.0, height: 87.5 },
-            { bln: 'Mei', weight: 12.4, height: 88.5 },
-        ],
-        aiRisk: 'Sangat Rendah',
-        aiColor: 'emerald',
-        zScore: '+0.5',
-        aiInsight: 'Pertumbuhan linear sangat baik! Pertahankan asupan protein hewani (telur, ikan, daging) minimal 2 porsi sehari.'
-    },
-    {
-        id: 2,
-        name: 'Ayesha Zahra',
-        gender: 'Perempuan',
-        birthDate: '05 Okt 2025',
-        ageStr: '7 Bulan',
-        lastWeight: '7.8 kg',
-        lastHeight: '68.2 cm',
-        history: [
-            { bln: 'Jan', weight: 5.5, height: 60.5 },
-            { bln: 'Feb', weight: 6.5, height: 63.0 },
-            { bln: 'Mar', weight: 7.0, height: 65.5 },
-            { bln: 'Apr', weight: 7.5, height: 67.0 },
-            { bln: 'Mei', weight: 7.8, height: 68.2 },
-        ],
-        aiRisk: 'Normal / Aman',
-        aiColor: 'blue',
-        zScore: '+0.2',
-        aiInsight: 'Fase MPASI berjalan lancar. Pastikan tekstur makanan (puree/lumat) sesuai usianya untuk melatih kemampuan oromotorik.'
-    }
-];
+// Data diambil dari server melalui Inertia props (tidak ada mock data lagi)
 
-export default function Children() {
+export default function Children({ children: serverChildren = [], flash = {} }) {
+    // --- TRANSFORMASI DATA SERVER → FORMAT KOMPONEN ---
+    const mapServerChild = (c) => ({
+        id: c.id,
+        name: c.name,
+        gender: c.gender,
+        birthDate: c.birth_date ? new Date(c.birth_date).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '-',
+        ageStr: c.age_display || '-',
+        lastWeight: c.last_measurement ? `${c.last_measurement.weight} kg` : (c.birth_weight ? `${c.birth_weight} kg` : '-'),
+        lastHeight: c.last_measurement ? `${c.last_measurement.height} cm` : (c.birth_height ? `${c.birth_height} cm` : '-'),
+        history: (c.history || []).map((h, idx) => ({
+            bln: new Date(h.measured_at).toLocaleDateString('id-ID', { month:'short' }),
+            weight: parseFloat(h.weight) || 0,
+            height: parseFloat(h.height) || 0,
+        })),
+        aiRisk: c.last_measurement?.status_tinggi?.includes('Stunted') ? 'Berisiko Stunting'
+              : c.last_measurement?.status_gizi === 'Gizi Buruk' ? 'Gizi Buruk'
+              : c.last_measurement ? 'Normal / Aman' : 'Belum Ada Data',
+        aiColor: c.last_measurement?.status_tinggi?.includes('Stunted') ? 'rose'
+               : c.last_measurement?.status_gizi === 'Gizi Buruk' ? 'red'
+               : c.last_measurement ? 'emerald' : 'gray',
+        zScore: c.last_measurement?.z_score_tbu != null ? (c.last_measurement.z_score_tbu >= 0 ? '+' : '') + c.last_measurement.z_score_tbu : '-',
+        aiInsight: c.last_measurement?.status_tinggi?.includes('Stunted')
+            ? 'Perhatian! Anak terdeteksi berisiko stunting. Segera konsultasikan ke Kader atau Puskesmas terdekat.'
+            : c.last_measurement
+            ? 'Pertumbuhan dalam batas normal. Pertahankan pola makan gizi seimbang dan pantau setiap bulan.'
+            : 'Silakan lakukan pengukuran pertama untuk mendapatkan analisis status gizi.',
+        childId: c.id,
+        status: c.status,
+        pendingCount: c.pending_count || 0,
+    });
+
     // --- STATES ---
-    const [childrenList, setChildrenList] = useState(initialChildrenData);
-    const [activeChildId, setActiveChildId] = useState(1);
+    const [childrenList, setChildrenList] = useState(serverChildren.map(mapServerChild));
+    const [activeChildId, setActiveChildId] = useState(serverChildren[0]?.id || null);
     const [showAddForm, setShowAddForm] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     
@@ -116,83 +105,57 @@ export default function Children() {
     const activeChild = childrenList.find(c => c.id === activeChildId) || childrenList[0];
 
     // State form untuk input pengukuran bulanan
-    const { data: measureData, setData: setMeasureData, post: postMeasure, processing: processingMeasure } = useForm({
+    const { data: measureData, setData: setMeasureData, post: postMeasure, processing: processingMeasure, reset: resetMeasureForm } = useForm({
+        child_id: activeChildId,
         weight: '',
         height: '',
-        date: new Date().toISOString().split('T')[0]
+        head_circumference: '',
+        measured_at: new Date().toISOString().split('T')[0],
+        notes: '',
     });
 
     // State form untuk tambah anak baru
     const { data: newChild, setData: setNewChild, post: postNewChild, processing: processingChild, reset: resetChildForm } = useForm({
         name: '',
         gender: 'Laki-laki',
-        birthDate: ''
+        birth_date: '',
+        father_name: '',
+        mother_name: '',
+        birth_weight: '',
+        birth_height: '',
     });
 
     // Reset form ukur jika pindah anak
     useEffect(() => {
-        setMeasureData('weight', '');
-        setMeasureData('height', '');
+        setMeasureData({
+            child_id: activeChildId,
+            weight: '',
+            height: '',
+            head_circumference: '',
+            measured_at: new Date().toISOString().split('T')[0],
+            notes: '',
+        });
     }, [activeChildId]);
 
     // --- HANDLERS ---
     const submitMeasurement = (e) => {
         e.preventDefault();
-        postMeasure('/mock-route', {
+        postMeasure(route('Children.storeMeasurement'), {
             onSuccess: () => {
-                // Update real-time untuk data grafik
-                const updatedChildren = childrenList.map(child => {
-                    if (child.id === activeChildId) {
-                        const dateObj = new Date(measureData.date);
-                        const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
-                        const newHistoryPoint = {
-                            bln: monthNames[dateObj.getMonth()],
-                            weight: parseFloat(measureData.weight) || 0,
-                            height: parseFloat(measureData.height) || 0
-                        };
-                        return { 
-                            ...child, 
-                            history: [...child.history, newHistoryPoint],
-                            lastWeight: `${measureData.weight} kg`,
-                            lastHeight: `${measureData.height} cm`
-                        };
-                    }
-                    return child;
-                });
-                setChildrenList(updatedChildren);
-
-                setIsSuccess('Pengukuran berhasil dicatat dan grafik diperbarui!');
+                setIsSuccess('Pengukuran berhasil dicatat! Menunggu verifikasi Kader.');
                 setTimeout(() => setIsSuccess(false), 4000);
-                setMeasureData('weight', '');
-                setMeasureData('height', '');
+                resetMeasureForm();
             }
         });
     };
 
     const submitNewChild = (e) => {
         e.preventDefault();
-        postNewChild('/mock-route', {
+        postNewChild(route('Children.store'), {
             onSuccess: () => {
-                const newId = childrenList.length + 1;
-                setChildrenList([...childrenList, {
-                    id: newId,
-                    name: newChild.name,
-                    gender: newChild.gender,
-                    birthDate: newChild.birthDate,
-                    ageStr: '0 Bulan (Baru)',
-                    lastWeight: '-',
-                    lastHeight: '-',
-                    history: [],
-                    aiRisk: 'Belum Ada Data',
-                    aiColor: 'gray',
-                    zScore: '-',
-                    aiInsight: 'Silakan lakukan pengukuran pertama untuk mendapatkan analisis AI.'
-                }]);
-                
-                setIsSuccess('Profil Anak berhasil ditambahkan!');
+                setIsSuccess('Profil Anak berhasil didaftarkan! Menunggu verifikasi Kader.');
                 setTimeout(() => setIsSuccess(false), 3000);
                 setShowAddForm(false);
-                setActiveChildId(newId);
                 resetChildForm();
             }
         });
@@ -340,8 +303,8 @@ export default function Children() {
                                     <label className="text-sm font-bold text-gray-700">Tanggal Lahir</label>
                                     <input 
                                         type="date" 
-                                        value={newChild.birthDate}
-                                        onChange={e => setNewChild('birthDate', e.target.value)}
+                                        value={newChild.birth_date}
+                                        onChange={e => setNewChild('birth_date', e.target.value)}
                                         className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-violet-200 focus:border-violet-500 outline-none transition-all"
                                         required
                                     />
@@ -430,8 +393,8 @@ export default function Children() {
                                                 </label>
                                                 <input 
                                                     type="date" 
-                                                    value={measureData.date}
-                                                    onChange={e => setMeasureData('date', e.target.value)}
+                                                    value={measureData.measured_at}
+                                                    onChange={e => setMeasureData('measured_at', e.target.value)}
                                                     className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-violet-200 focus:border-violet-500 outline-none transition-all"
                                                     required
                                                 />
