@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 
 // --- CUSTOM CSS ---
 const pageStyles = `
@@ -54,82 +54,19 @@ const categories = [
     { id: 'pola-hidup', label: 'Pola Hidup Sehat', icon: <Apple size={16} /> },
 ];
 
-const articlesData = [
-    {
-        id: 1,
-        title: "Panduan Lengkap Pijat Bayi untuk Mendukung Kualitas Tidur",
-        category: "ibu-anak",
-        categoryLabel: "Ibu & Anak",
-        readTime: "5 Menit Baca",
-        excerpt: "Pijat bayi bukan hanya membuat si kecil rileks, tapi juga mempererat bonding antara ibu dan anak. Simak langkah-langkah amannya di sini.",
-        imageGradient: "from-pink-400 to-rose-400",
-        isFeatured: true
-    },
-    {
-        id: 2,
-        title: "10 Superfood MPASI Penambah Berat Badan Anak",
-        category: "mpasi",
-        categoryLabel: "Tips MPASI",
-        readTime: "4 Menit Baca",
-        excerpt: "Bingung berat badan anak seret? Masukkan 10 bahan makanan padat nutrisi ini ke dalam menu harian MPASI si kecil.",
-        imageGradient: "from-orange-400 to-amber-500",
-        isFeatured: false
-    },
-    {
-        id: 3,
-        title: "Mengenal Gejala Awal Stunting Sejak 1000 Hari Pertama",
-        category: "stunting",
-        categoryLabel: "Cegah Stunting",
-        readTime: "7 Menit Baca",
-        excerpt: "Stunting bisa dicegah sejak masa kehamilan. Kenali tanda-tandanya dan pastikan anak selalu dalam kurva pertumbuhan yang aman.",
-        imageGradient: "from-emerald-400 to-teal-500",
-        isFeatured: false
-    },
-    {
-        id: 4,
-        title: "Jadwal Imunisasi Dasar Lengkap Kemenkes 2026",
-        category: "imunisasi",
-        categoryLabel: "Imunisasi",
-        readTime: "6 Menit Baca",
-        excerpt: "Panduan terbaru dan terlengkap mengenai jadwal imunisasi wajib untuk bayi usia 0-24 bulan yang tidak boleh terlewat.",
-        imageGradient: "from-blue-400 to-indigo-500",
-        isFeatured: false
-    },
-    {
-        id: 5,
-        title: "Pentingnya Jam Tidur Teratur Bagi Perkembangan Otak Balita",
-        category: "pola-hidup",
-        categoryLabel: "Pola Hidup Sehat",
-        readTime: "3 Menit Baca",
-        excerpt: "Tidur malam yang cukup sangat krusial untuk regenerasi sel otak anak. Berapa lama idealnya balita tidur setiap hari?",
-        imageGradient: "from-violet-400 to-fuchsia-500",
-        isFeatured: false
-    },
-    {
-        id: 6,
-        title: "Resep Snack MPASI Tinggi Kalori (Snack BB Booster)",
-        category: "mpasi",
-        categoryLabel: "Tips MPASI",
-        readTime: "4 Menit Baca",
-        excerpt: "Cobain resep puding roti keju dan bola-bola daging ayam yang lezat, bergizi tinggi, dan pasti disukai anak-anak.",
-        imageGradient: "from-amber-400 to-yellow-500",
-        isFeatured: false
-    }
-];
-
-export default function EdukasiKesehatan() {
+export default function EdukasiKesehatan({ articles = [] }) {
     const [activeCategory, setActiveCategory] = useState('semua');
     const [searchQuery, setSearchQuery] = useState('');
 
     // Filter artikel berdasarkan pencarian dan kategori
-    const filteredArticles = articlesData.filter(article => {
+    const filteredArticles = articles.filter(article => {
         const matchCategory = activeCategory === 'semua' || article.category === activeCategory;
         const matchSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             article.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
         return matchCategory && matchSearch;
     });
 
-    const featuredArticle = articlesData.find(a => a.isFeatured);
+    const featuredArticle = articles.find(a => a.isFeatured);
 
     return (
         <AuthenticatedLayout
@@ -195,7 +132,7 @@ export default function EdukasiKesehatan() {
 
                     {/* === ARTIKEL SOROTAN UTAMA === */}
                     {activeCategory === 'semua' && searchQuery === '' && featuredArticle && (
-                        <div className="relative rounded-[2.5rem] overflow-hidden shadow-lg group article-card cursor-pointer flex flex-col md:flex-row h-auto md:h-[400px]">
+                        <Link href={route('education.show', featuredArticle.id)} className="relative rounded-[2.5rem] overflow-hidden shadow-lg group article-card cursor-pointer flex flex-col md:flex-row h-auto md:h-[400px] block">
                             {/* Gambar / Visual Sorotan (Sisi Kiri) */}
                             <div className={`w-full md:w-3/5 h-64 md:h-full bg-gradient-to-br ${featuredArticle.imageGradient} relative overflow-hidden`}>
                                 <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors z-10"></div>
@@ -227,7 +164,7 @@ export default function EdukasiKesehatan() {
                                     </button>
                                 </div>
                             </div>
-                        </div>
+                        </Link>
                     )}
 
                     {/* === DAFTAR ARTIKEL GRID === */}
@@ -247,9 +184,10 @@ export default function EdukasiKesehatan() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {filteredArticles.map((article, index) => (
-                                    <div 
-                                        key={article.id} 
-                                        className="bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col group article-card animate-slide-up"
+                                    <Link 
+                                        key={article.id}
+                                        href={route('education.show', article.id)}
+                                        className="bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col group article-card animate-slide-up block"
                                         style={{ animationDelay: `${index * 100}ms` }}
                                     >
                                         {/* Thumbnail Artikel */}
@@ -289,7 +227,7 @@ export default function EdukasiKesehatan() {
                                                 </button>
                                             </div>
                                         </div>
-                                    </div>
+                                    </Link>
                                 ))}
                             </div>
                         )}

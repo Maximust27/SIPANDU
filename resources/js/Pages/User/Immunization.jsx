@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 
 // --- CUSTOM CSS UNTUK ANIMASI & GLASSMORPHISM ---
 const pageStyles = `
@@ -105,10 +105,8 @@ export default function Immunization({ auth, upcomingSchedules = [], children = 
     const childrenList = children.map(c => {
         const ageStr = calculateAge(c.birth_date);
         
-        // Find if this child has an active queue for the closest upcoming schedule
-        const childQueue = activeSchedule 
-            ? activeQueues.find(q => q.child_id === c.id && q.schedule_id === activeSchedule.id)
-            : null;
+        // Find if this child has an active queue in any today or upcoming schedule
+        const childQueue = activeQueues.find(q => q.child_id === c.id);
 
         return {
             id: c.id,
@@ -116,11 +114,17 @@ export default function Immunization({ auth, upcomingSchedules = [], children = 
             gender: c.gender,
             ageStr: ageStr,
             birth_date: c.birth_date,
-            scheduleDate: activeSchedule ? activeSchedule.date_display : 'Belum Ada Jadwal',
+            scheduleDate: childQueue ? childQueue.schedule_date : (activeSchedule ? activeSchedule.date_display : 'Belum Ada Jadwal'),
             queue: {
                 hasTicket: !!childQueue,
                 number: childQueue ? childQueue.ticket_code : null,
-                status: childQueue ? (childQueue.status === 'menunggu' ? 'Menunggu' : 'Sedang Diperiksa') : null
+                status: childQueue 
+                    ? (childQueue.status === 'menunggu' 
+                        ? 'Menunggu' 
+                        : (childQueue.status === 'diperiksa' 
+                            ? 'Sedang Diperiksa' 
+                            : 'Selesai')) 
+                    : null
             },
             immunization: getImmunizationTimeline(c.birth_date)
         };
@@ -145,6 +149,19 @@ export default function Immunization({ auth, upcomingSchedules = [], children = 
             setData('schedule_id', activeSchedule.id);
         }
     }, [activeSchedule]);
+
+    // Polling real-time updates for queues and schedules every 5 seconds
+    useEffect(() => {
+        const interval = setInterval(() => {
+            router.reload({
+                only: ['activeQueues', 'upcomingSchedules'],
+                preserveScroll: true,
+                preserveState: true
+            });
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, []);
 
     const handleTakeQueue = (e) => {
         if (e) e.preventDefault();
@@ -238,7 +255,11 @@ export default function Immunization({ auth, upcomingSchedules = [], children = 
                                     {/* KARTU ANTRIAN ONLINE */}
                                     <div className={`rounded-[2.5rem] p-6 sm:p-8 text-white shadow-lg flex flex-col sm:flex-row justify-between items-center gap-6 relative overflow-hidden transition-all duration-500 ${
                                         activeChild.queue.hasTicket 
-                                        ? 'bg-gradient-to-r from-emerald-500 to-teal-600 shadow-emerald-200/50' 
+                                        ? (activeChild.queue.status === 'Selesai'
+                                            ? 'bg-gradient-to-r from-slate-500 to-gray-600 shadow-gray-200/50'
+                                            : (activeChild.queue.status === 'Sedang Diperiksa'
+                                                ? 'bg-gradient-to-r from-amber-500 to-orange-600 shadow-orange-200/50 animate-pulse border-4 border-orange-400'
+                                                : 'bg-gradient-to-r from-emerald-500 to-teal-600 shadow-emerald-200/50'))
                                         : 'bg-gradient-to-r from-violet-600 to-indigo-600 shadow-violet-200/50'
                                     }`}>
                                         {/* Icon Background */}
@@ -248,15 +269,33 @@ export default function Immunization({ auth, upcomingSchedules = [], children = 
                                         
                                         <div className="relative z-10 space-y-2 text-center sm:text-left">
                                             <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-xs font-semibold uppercase tracking-wider">
-                                                <span className={`w-2 h-2 rounded-full animate-pulse ${activeChild.queue.hasTicket ? 'bg-white' : 'bg-green-400'}`}></span>
-                                                {activeChild.queue.hasTicket ? 'Tiket Antrian Aktif' : 'Antrian Online Terbuka'}
+                                                <span className={`w-2 h-2 rounded-full ${
+                                                    activeChild.queue.hasTicket 
+                                                    ? (activeChild.queue.status === 'Selesai' 
+                                                        ? 'bg-slate-300' 
+                                                        : (activeChild.queue.status === 'Sedang Diperiksa' ? 'bg-white animate-ping' : 'animate-pulse bg-white')) 
+                                                    : 'bg-green-400'
+                                                }`}></span>
+                                                {activeChild.queue.hasTicket 
+                                                    ? (activeChild.queue.status === 'Selesai' 
+                                                        ? 'Pemeriksaan Selesai' 
+                                                        : (activeChild.queue.status === 'Sedang Diperiksa' ? 'PANGGILAN AKTIF - SILAKAN MASUK' : 'Tiket Antrian Aktif')) 
+                                                    : 'Antrian Online Terbuka'}
                                             </div>
                                             <h3 className="text-3xl font-bold tracking-tight">
-                                                {activeChild.queue.hasTicket ? 'Antrian Posyandu Anda' : 'Ambil Nomor Antrian'}
+                                                {activeChild.queue.hasTicket 
+                                                    ? (activeChild.queue.status === 'Selesai' 
+                                                        ? 'Kunjungan Selesai' 
+                                                        : (activeChild.queue.status === 'Sedang Diperiksa' ? 'Giliran Anda!' : 'Antrian Posyandu Anda')) 
+                                                    : 'Ambil Nomor Antrian'}
                                             </h3>
                                             <p className="text-white/80 text-sm max-w-md">
                                                 {activeChild.queue.hasTicket 
-                                                    ? `Anda sudah terdaftar untuk sesi Posyandu tanggal ${activeChild.scheduleDate}. Tunjukkan tiket ini kepada Kader.`
+                                                    ? (activeChild.queue.status === 'Selesai'
+                                                        ? `Pemeriksaan untuk ${activeChild.name} telah selesai dilaksanakan pada hari ini. Terima kasih!`
+                                                        : (activeChild.queue.status === 'Sedang Diperiksa'
+                                                            ? `Segera menuju ke meja pemeriksaan! Nomor antrean Anda (${activeChild.queue.number}) sedang dipanggil oleh Kader.`
+                                                            : `Anda sudah terdaftar untuk sesi Posyandu tanggal ${activeChild.scheduleDate}. Tunjukkan tiket ini kepada Kader.`))
                                                     : `Hindari menunggu lama! Ambil antrian Posyandu secara online untuk ${activeChild.name} sekarang juga.`}
                                             </p>
                                         </div>
@@ -268,10 +307,22 @@ export default function Immunization({ auth, upcomingSchedules = [], children = 
                                                     <p className="text-[10px] opacity-75">Belum ada jadwal</p>
                                                 </div>
                                             ) : activeChild.queue.hasTicket ? (
-                                                <div className="bg-white text-emerald-700 p-5 rounded-3xl text-center shadow-inner border-4 border-emerald-400/30 w-full sm:w-48">
+                                                <div className={`bg-white p-5 rounded-3xl text-center shadow-inner border-4 w-full sm:w-48 ${
+                                                    activeChild.queue.status === 'Selesai' 
+                                                        ? 'text-slate-700 border-slate-300/30' 
+                                                        : (activeChild.queue.status === 'Sedang Diperiksa'
+                                                            ? 'text-orange-600 border-orange-400 shadow-md scale-105'
+                                                            : 'text-emerald-700 border-emerald-400/30')
+                                                }`}>
                                                     <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-1">Nomor Anda</p>
                                                     <p className="text-5xl font-black">{activeChild.queue.number}</p>
-                                                    <div className="mt-3 pt-3 border-t border-emerald-100 flex items-center justify-center gap-1.5 text-xs font-bold text-emerald-600">
+                                                    <div className={`mt-3 pt-3 border-t flex items-center justify-center gap-1.5 text-xs font-bold ${
+                                                        activeChild.queue.status === 'Selesai' 
+                                                            ? 'border-slate-100 text-slate-500' 
+                                                            : (activeChild.queue.status === 'Sedang Diperiksa'
+                                                                ? 'border-orange-100 text-orange-600 font-black'
+                                                                : 'border-emerald-100 text-emerald-600')
+                                                    }`}>
                                                         <Check size={14} /> {activeChild.queue.status}
                                                     </div>
                                                 </div>

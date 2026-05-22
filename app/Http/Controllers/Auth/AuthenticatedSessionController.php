@@ -32,9 +32,34 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
         $request->session()->regenerate();
     
-        // --- TAMBAHKAN LOGIKA FILTER ROLE DI SINI ---
         $role = $request->user()->role; 
     
+        // Bersihkan url.intended jika tidak sesuai dengan role user untuk mencegah error 403
+        $intendedUrl = $request->session()->get('url.intended');
+        if ($intendedUrl) {
+            $path = parse_url($intendedUrl, PHP_URL_PATH) ?? '';
+            $isValid = false;
+
+            if ($role === 'admin') {
+                if (str_starts_with($path, '/admin') || str_starts_with($path, '/profile')) {
+                    $isValid = true;
+                }
+            } elseif ($role === 'kader') {
+                if (str_starts_with($path, '/kader') || str_starts_with($path, '/profile')) {
+                    $isValid = true;
+                }
+            } else {
+                // Default untuk role 'pengguna' (Bunda)
+                if (!str_starts_with($path, '/admin') && !str_starts_with($path, '/kader')) {
+                    $isValid = true;
+                }
+            }
+
+            if (!$isValid) {
+                $request->session()->forget('url.intended');
+            }
+        }
+
         if ($role === 'admin') {
             return redirect()->intended(route('admin.dashboard'));
         } elseif ($role === 'kader') {

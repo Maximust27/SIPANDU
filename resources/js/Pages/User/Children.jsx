@@ -350,11 +350,22 @@ export default function Children({ children: serverChildren = [], flash = {} }) 
                                             </div>
                                             <div>
                                                 <h3 className="text-2xl font-bold text-gray-900">{activeChild.name}</h3>
-                                                <p className={`text-sm font-medium px-2 py-0.5 rounded-md inline-block mt-1 ${
-                                                    activeChild.gender === 'Laki-laki' ? 'text-blue-600 bg-blue-50' : 'text-pink-600 bg-pink-50'
-                                                }`}>
-                                                    {activeChild.gender}
-                                                </p>
+                                                <div className="flex gap-2 mt-1">
+                                                    <p className={`text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-lg inline-block ${
+                                                        activeChild.gender === 'Laki-laki' ? 'text-blue-600 bg-blue-50' : 'text-pink-600 bg-pink-50'
+                                                    }`}>
+                                                        {activeChild.gender}
+                                                    </p>
+                                                    <p className={`text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-lg inline-block shadow-sm ${
+                                                        activeChild.aiRisk === 'Berisiko Stunting' || activeChild.aiRisk === 'Gizi Buruk' 
+                                                            ? 'text-white bg-rose-500' 
+                                                            : activeChild.aiRisk === 'Normal / Aman'
+                                                                ? 'text-white bg-emerald-500'
+                                                                : 'text-gray-600 bg-gray-100'
+                                                    }`}>
+                                                        {activeChild.aiRisk}
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -638,7 +649,7 @@ export default function Children({ children: serverChildren = [], flash = {} }) 
                                         {/* Detail Z-Score */}
                                         <div className="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-lg border border-gray-100/50">
                                             <span className="text-xs text-gray-500 font-medium">Skor TB/U (Z-Score)</span>
-                                            <span className="text-sm font-bold text-gray-900">{activeChild.zScore} SD</span>
+                                            <span className="text-sm font-bold text-gray-900">{activeChild.zScore !== '-' ? `${activeChild.zScore} SD` : '-'}</span>
                                         </div>
 
                                         {/* Insight Teks Terstruktur */}

@@ -73,6 +73,7 @@ Route::middleware(['auth', 'verified', 'role:pengguna'])->group(function () {
     Route::get('/ai-assistant', [AIAssistantController::class, 'index'])->name('ai-assistant.index');
     Route::post('/ai-assistant/chat', [AIAssistantController::class, 'chat'])->name('ai-assistant.chat');
     Route::get('/edukasi-kesehatan', [EducationController::class, 'index'])->name('education.index');
+    Route::get('/edukasi-kesehatan/{id}', [EducationController::class, 'show'])->name('education.show');
 });
 
 

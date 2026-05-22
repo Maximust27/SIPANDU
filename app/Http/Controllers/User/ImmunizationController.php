@@ -19,9 +19,9 @@ class ImmunizationController extends Controller
     {
         $user = Auth::user();
 
-        // Jadwal posyandu yang akan datang (di kelurahan user)
+        // Jadwal posyandu yang akan datang (di kelurahan user, termasuk yang sedang berlangsung hari ini)
         $upcomingSchedules = Schedule::with('posyandu')
-            ->where('status', 'upcoming')
+            ->whereIn('status', ['upcoming', 'berlangsung'])
             ->where('scheduled_date', '>=', now()->toDateString())
             ->whereHas('posyandu', fn($q) => $q->where('kelurahan', $user->kelurahan))
             ->orderBy('scheduled_date')
@@ -42,10 +42,10 @@ class ImmunizationController extends Controller
         $children = Child::where('user_id', $user->id)
             ->get(['id', 'name', 'gender', 'birth_date']);
 
-        // Antrian aktif milik user (tiket yang sudah diambil)
+        // Antrian aktif milik user (tiket yang sudah diambil, termasuk yang sudah selesai hari ini)
         $activeQueues = Queue::with(['schedule.posyandu', 'child'])
             ->where('user_id', $user->id)
-            ->whereIn('status', ['menunggu', 'diperiksa'])
+            ->whereIn('status', ['menunggu', 'diperiksa', 'selesai'])
             ->whereHas('schedule', fn($q) => $q->where('scheduled_date', '>=', now()->toDateString()))
             ->get()
             ->map(fn($q) => [

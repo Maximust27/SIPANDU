@@ -52,6 +52,8 @@ class ChildController extends Controller
                     'height'       => $lastMeasurement->height,
                     'status_gizi'  => $lastMeasurement->status_gizi,
                     'status_tinggi' => $lastMeasurement->status_tinggi,
+                    'z_score_bbu'  => $lastMeasurement->z_score_bbu,
+                    'z_score_tbu'  => $lastMeasurement->z_score_tbu,
                     'measured_at'  => $lastMeasurement->measured_at?->format('d M Y'),
                 ] : null,
                 'history' => $child->measurements->take(10)->map(fn($m) => [

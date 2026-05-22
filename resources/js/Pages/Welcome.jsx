@@ -131,6 +131,19 @@ const Navbar = ({ auth }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
+  const getDashboardUrl = () => {
+    if (!auth?.user) return '/login';
+    try {
+      if (auth.user.role === 'admin') return route('admin.dashboard');
+      if (auth.user.role === 'kader') return route('kader.dashboard');
+      return route('dashboard');
+    } catch (e) {
+      if (auth.user.role === 'admin') return '/admin/dashboard';
+      if (auth.user.role === 'kader') return '/kader/dashboard';
+      return '/dashboard';
+    }
+  };
+
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
@@ -181,7 +194,7 @@ const Navbar = ({ auth }) => {
           <div className="hidden md:flex items-center gap-4">
             {auth?.user ? (
                <Link 
-                 href="/dashboard" 
+                 href={getDashboardUrl()} 
                  className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-2.5 rounded-full font-bold text-sm shadow-xl shadow-violet-200 transition-all hover:-translate-y-1"
                >
                  Dashboard
@@ -224,7 +237,7 @@ const Navbar = ({ auth }) => {
              </a>
           ))}
           {auth?.user ? (
-            <Link href="/dashboard" className="w-full bg-violet-600 text-white py-3 rounded-xl font-bold text-center block">
+            <Link href={getDashboardUrl()} className="w-full bg-violet-600 text-white py-3 rounded-xl font-bold text-center block">
                Dashboard
             </Link>
           ) : (

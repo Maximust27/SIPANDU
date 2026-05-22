@@ -47,8 +47,56 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)->post('/logout');
+ 
+         $this->assertGuest();
+         $response->assertRedirect('/');
+     }
 
-        $this->assertGuest();
-        $response->assertRedirect('/');
+    public function test_pengguna_user_is_not_redirected_to_kader_intended_url(): void
+    {
+        $user = User::factory()->create(['role' => 'pengguna']);
+
+        // Simulasikan intended URL kader di session
+        $response = $this->withSession(['url.intended' => 'http://localhost/kader/dashboard'])
+            ->post('/login', [
+                'email' => $user->email,
+                'password' => 'password',
+            ]);
+
+        $this->assertAuthenticated();
+        // Harusnya diredirect ke dashboard pengguna, bukan kader
+        $response->assertRedirect(route('dashboard'));
+        $this->assertNull(session('url.intended'));
+    }
+
+    public function test_pengguna_user_is_redirected_to_valid_intended_url(): void
+    {
+        $user = User::factory()->create(['role' => 'pengguna']);
+
+        // Simulasikan intended URL pengguna di session
+        $response = $this->withSession(['url.intended' => 'http://localhost/anak-pertumbuhan'])
+            ->post('/login', [
+                'email' => $user->email,
+                'password' => 'password',
+            ]);
+
+        $this->assertAuthenticated();
+        $response->assertRedirect('http://localhost/anak-pertumbuhan');
+    }
+
+    public function test_kader_user_is_redirected_to_kader_intended_url(): void
+    {
+        $user = User::factory()->create(['role' => 'kader']);
+
+        // Simulasikan intended URL kader di session
+        $response = $this->withSession(['url.intended' => 'http://localhost/kader/dashboard'])
+            ->post('/login', [
+                'email' => $user->email,
+                'password' => 'password',
+            ]);
+
+        $this->assertAuthenticated();
+        $response->assertRedirect('http://localhost/kader/dashboard');
     }
 }
+

@@ -28,6 +28,19 @@ export default function ScheduleAndQueue({ initialQueues = [], activeSchedule = 
         setQueues(initialQueues || []);
     }, [initialQueues]);
 
+    // Polling real-time updates for queues and schedules every 5 seconds
+    useEffect(() => {
+        const interval = setInterval(() => {
+            router.reload({
+                only: ['initialQueues', 'activeSchedule', 'allSchedules'],
+                preserveScroll: true,
+                preserveState: true
+            });
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, []);
+
     // Form Pembuatan Jadwal Baru
     const [scheduleForm, setScheduleForm] = useState({
         date: '',
