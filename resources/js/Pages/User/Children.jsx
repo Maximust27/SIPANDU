@@ -72,6 +72,7 @@ export default function Children({ children: serverChildren = [], flash = {} }) 
         lastHeight: c.last_measurement ? `${c.last_measurement.height} cm` : (c.birth_height ? `${c.birth_height} cm` : '-'),
         history: (c.history || []).map((h, idx) => ({
             bln: new Date(h.measured_at).toLocaleDateString('id-ID', { month:'short' }),
+            date: h.measured_at ? new Date(h.measured_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
             weight: parseFloat(h.weight) || 0,
             height: parseFloat(h.height) || 0,
         })),
@@ -175,8 +176,10 @@ export default function Children({ children: serverChildren = [], flash = {} }) 
     });
 
     // Kalkulasi titik kordinat (x, y) dalam persentase untuk SVG dan Titik Bulat
-    const chartPoints = activeChild.history.map((d, index) => {
-        const x = (index / Math.max(activeChild.history.length - 1, 1)) * 100;
+    // Balikkan history (terbaru ke terlama) agar tampil berurutan dari kiri ke kanan (terlama ke terbaru)
+    const sortedHistory = [...activeChild.history].reverse();
+    const chartPoints = sortedHistory.map((d, index) => {
+        const x = (index / Math.max(sortedHistory.length - 1, 1)) * 100;
         const val = isWeight ? d.weight : d.height;
         
         // cssY = 0% di bawah, 100% di atas. Kita batasi (clamp) agar tidak tembus boks terlalu jauh
@@ -191,6 +194,9 @@ export default function Children({ children: serverChildren = [], flash = {} }) 
 
     // Membuat string SVG Path (M = Move to, L = Line to)
     const svgPathData = chartPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.svgY}`).join(' ');
+    const svgAreaData = chartPoints.length > 0
+        ? `${svgPathData} L ${chartPoints[chartPoints.length - 1].x} 100 L ${chartPoints[0].x} 100 Z`
+        : '';
 
     return (
         <AuthenticatedLayout
@@ -492,9 +498,15 @@ export default function Children({ children: serverChildren = [], flash = {} }) 
                                             
                                             {/* ZONA WARNA KMS (Hijau Normal, Kuning Waspada, Merah Bahaya) */}
                                             {/* Padding horizontal chart: kita asumsikan padding inner 2.5rem (40px) */}
-                                            <div className="absolute inset-x-0 ml-14 mr-6 bottom-[40%] top-6 bg-emerald-50/40 z-0 rounded-t-xl border-b border-emerald-200/50"></div>
-                                            <div className="absolute inset-x-0 ml-14 mr-6 bottom-[20%] top-[60%] bg-amber-50/40 z-0 border-b border-amber-200/50"></div>
-                                            <div className="absolute inset-x-0 ml-14 mr-6 bottom-8 top-[80%] bg-rose-50/40 z-0 rounded-b-xl border-t border-rose-200/50"></div>
+                                            <div className="absolute inset-x-0 ml-14 mr-6 bottom-[40%] top-6 bg-emerald-50/40 z-0 rounded-t-xl border-b border-emerald-200/50 flex items-center justify-end pr-4 pointer-events-none">
+                                                <span className="text-[9px] font-bold text-emerald-600/50 uppercase tracking-widest">ZONA NORMAL (BAIK)</span>
+                                            </div>
+                                            <div className="absolute inset-x-0 ml-14 mr-6 bottom-[20%] top-[60%] bg-amber-50/40 z-0 border-b border-amber-200/50 flex items-center justify-end pr-4 pointer-events-none">
+                                                <span className="text-[9px] font-bold text-amber-600/50 uppercase tracking-widest">ZONA WASPADA (KURANG)</span>
+                                            </div>
+                                            <div className="absolute inset-x-0 ml-14 mr-6 bottom-8 top-[80%] bg-rose-50/40 z-0 rounded-b-xl border-t border-rose-200/50 flex items-center justify-end pr-4 pointer-events-none">
+                                                <span className="text-[9px] font-bold text-rose-600/50 uppercase tracking-widest">ZONA BAHAYA (BURUK)</span>
+                                            </div>
                                             
                                             {/* GRID LINES (Garis Horizontal Pembantu) */}
                                             <div className="absolute inset-0 top-6 bottom-8 flex flex-col justify-between pl-14 pr-6 pointer-events-none z-0">
@@ -504,27 +516,38 @@ export default function Children({ children: serverChildren = [], flash = {} }) 
                                             </div>
 
                                             {/* Label Y-Axis Dinamis (Menyesuaikan Toggle) */}
-                                            <div className="absolute left-2 top-0 bottom-8 flex flex-col justify-between py-4 text-[10px] text-gray-400 font-bold z-10">
+                                            <div className="absolute left-2 top-6 bottom-8 flex flex-col justify-between text-[10px] text-gray-400 font-bold z-10">
                                                 {yLabels.map((lbl, i) => (
                                                     <span key={i}>{lbl}</span>
                                                 ))}
                                             </div>
 
                                             {/* PLOT DATA TITIK & GARIS PENGHUBUNG DINAMIS */}
-                                            <div className="relative w-full h-full ml-8 mr-6 px-4 flex items-end pb-2 z-10">
+                                            <div className="absolute left-14 right-6 top-6 bottom-8 z-10">
                                                 <svg 
                                                     viewBox="0 0 100 100" 
                                                     preserveAspectRatio="none" 
                                                     className="absolute inset-0 w-full h-full overflow-visible pointer-events-none chart-svg"
                                                 >
+                                                    <defs>
+                                                        <linearGradient id="userChartGradient" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.25" />
+                                                            <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.0" />
+                                                        </linearGradient>
+                                                    </defs>
+                                                    {/* Area Gradient di Bawah Garis */}
+                                                    {svgAreaData && (
+                                                        <path d={svgAreaData} fill="url(#userChartGradient)" />
+                                                    )}
                                                     {/* SVG Path yang Digenerate Secara Dinamis dari Koordinat Persentase */}
                                                     <path 
                                                         d={svgPathData} 
                                                         fill="none" 
                                                         stroke="#4f46e5" 
-                                                        strokeWidth="3" 
+                                                        strokeWidth="2" 
                                                         strokeLinecap="round" 
                                                         strokeLinejoin="round" 
+                                                        style={{ vectorEffect: 'non-scaling-stroke' }}
                                                     />
                                                 </svg>
 
@@ -544,12 +567,17 @@ export default function Children({ children: serverChildren = [], flash = {} }) 
 
                                                             {/* Kotak Tooltip Interaktif */}
                                                             <div 
-                                                                className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs px-3 py-2 rounded-lg shadow-xl pointer-events-none whitespace-nowrap z-30 font-medium"
-                                                                style={{ bottom: `calc(${pt.cssY}% + 12px)` }}
+                                                                className="absolute opacity-0 group-hover:opacity-100 transition-all duration-200 bg-gray-900 text-white p-3 rounded-xl shadow-2xl pointer-events-none whitespace-nowrap z-30 text-center transform -translate-x-1/2 -translate-y-2"
+                                                                style={{ bottom: `calc(${pt.cssY}% + 16px)` }}
                                                             >
-                                                                <div className="font-bold text-[10px] text-gray-300 mb-0.5">{pt.bln}</div>
-                                                                {pt.val} {unit}
+                                                                <div className="text-[11px] font-bold text-gray-300 mb-1">{pt.date}</div>
+                                                                <div className="text-sm font-black">{pt.val} {unit}</div>
                                                             </div>
+
+                                                            {/* Label Nilai Langsung Di Atas Titik */}
+                                                            <span className="text-[10px] font-black text-indigo-800 bg-indigo-50/95 border border-indigo-100 rounded-md px-1 py-0.5 shadow-sm absolute transform -translate-x-1/2 -translate-y-5 pointer-events-none z-10" style={{ bottom: `${pt.cssY}%` }}>
+                                                                {pt.val} {unit}
+                                                            </span>
 
                                                             {/* Titik Point Biru */}
                                                             <div 

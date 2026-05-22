@@ -71,6 +71,7 @@ Route::middleware(['auth', 'verified', 'role:pengguna'])->group(function () {
 
     // AI Assistant & Edukasi
     Route::get('/ai-assistant', [AIAssistantController::class, 'index'])->name('ai-assistant.index');
+    Route::post('/ai-assistant/chat', [AIAssistantController::class, 'chat'])->name('ai-assistant.chat');
     Route::get('/edukasi-kesehatan', [EducationController::class, 'index'])->name('education.index');
 });
 
@@ -101,6 +102,7 @@ Route::prefix('kader')->name('kader.')->middleware(['auth', 'verified', 'role:ka
 
     // AI Monitoring
     Route::get('/ai-monitoring', [AIMonitoringController::class, 'index'])->name('ai-monitoring.index');
+    Route::post('/ai-monitoring/analyze/{childId}', [AIMonitoringController::class, 'analyze'])->name('ai-monitoring.analyze');
 });
 
 

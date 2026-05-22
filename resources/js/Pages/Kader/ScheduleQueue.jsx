@@ -8,7 +8,6 @@ import {
   CheckCircle2, 
   Mic, 
   UserCheck, 
-  Syringe, 
   MapPin, 
   Search,
   ChevronRight,
@@ -212,26 +211,6 @@ export default function ScheduleAndQueue({ initialQueues = [], activeSchedule = 
                             </form>
                         </div>
 
-                        {/* KARTU JADWAL IMUNISASI HARI INI */}
-                        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm space-y-4">
-                            <h4 className="text-base font-bold text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-50">
-                                <Syringe size={18} className="text-rose-500" /> Ketersediaan Vaksin
-                            </h4>
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                    <span className="text-sm font-bold text-gray-700">DPT-HB-Hib</span>
-                                    <span className="text-xs font-black text-emerald-600 bg-emerald-100 px-2 py-1 rounded-md">Tersedia</span>
-                                </div>
-                                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                    <span className="text-sm font-bold text-gray-700">Polio (OPV/IPV)</span>
-                                    <span className="text-xs font-black text-emerald-600 bg-emerald-100 px-2 py-1 rounded-md">Tersedia</span>
-                                </div>
-                                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                    <span className="text-sm font-bold text-gray-700">Campak Rubella</span>
-                                    <span className="text-xs font-black text-rose-600 bg-rose-100 px-2 py-1 rounded-md">Habis</span>
-                                </div>
-                            </div>
-                        </div>
 
                         {/* KARTU RIWAYAT & JADWAL POSYANDU */}
                         <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm space-y-4">

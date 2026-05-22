@@ -167,20 +167,25 @@ export default function GrowthMonitoring({ initialChildren = [] }) {
   };
 
   // --- PERSENTASE TITIK PADA GRAFIK KMS ---
-  const points = selectedChild?.measurements ? [...selectedChild.measurements].slice(0, 5).reverse() : [];
+  const points = selectedChild?.measurements ? [...selectedChild.measurements].slice(-5) : [];
   const maxChartVal = measureType === 'weight' ? 18 : measureType === 'height' ? 110 : 55;
   const minChartVal = measureType === 'weight' ? 2 : measureType === 'height' ? 50 : 30;
   const range = maxChartVal - minChartVal;
 
+  const unit = measureType === 'weight' ? 'kg' : 'cm';
   const chartPoints = points.map((p, idx) => {
     const val = measureType === 'weight' ? p.weight : measureType === 'height' ? p.height : p.headCirc;
     const x = (idx / Math.max(points.length - 1, 1)) * 100;
     const cssY = ((val - minChartVal) / range) * 100;
     const svgY = 100 - cssY;
-    return { ...p, x, svgY, cssY, val };
+    const formattedDate = p.date ? new Date(p.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+    return { ...p, x, svgY, cssY, val, formattedDate };
   });
 
   const svgPath = chartPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.svgY}`).join(' ');
+  const svgAreaPath = chartPoints.length > 0 
+    ? `${svgPath} L ${chartPoints[chartPoints.length - 1].x} 100 L ${chartPoints[0].x} 100 Z` 
+    : '';
   const yLabels = [...Array(5)].map((_, i) => (maxChartVal - (i * (range / 4))).toFixed(0));
 
   return (
@@ -402,9 +407,15 @@ export default function GrowthMonitoring({ initialChildren = [] }) {
                 </div>
               ) : (
                 <div className="w-full h-80 bg-white rounded-2xl border border-gray-100 p-6 flex flex-col justify-end relative shadow-inner">
-                  <div className="absolute inset-x-0 ml-14 mr-6 bottom-[40%] top-6 bg-emerald-50/40 z-0 rounded-t-xl border-b border-emerald-200/50"></div>
-                  <div className="absolute inset-x-0 ml-14 mr-6 bottom-[20%] top-[60%] bg-amber-50/40 z-0 border-b border-amber-200/50"></div>
-                  <div className="absolute inset-x-0 ml-14 mr-6 bottom-8 top-[80%] bg-rose-50/40 z-0 rounded-b-xl border-t border-rose-200/50"></div>
+                  <div className="absolute inset-x-0 ml-14 mr-6 bottom-[40%] top-6 bg-emerald-50/40 z-0 rounded-t-xl border-b border-emerald-200/50 flex items-center justify-end pr-4 pointer-events-none">
+                    <span className="text-[9px] font-bold text-emerald-600/50 uppercase tracking-widest">ZONA NORMAL (BAIK)</span>
+                  </div>
+                  <div className="absolute inset-x-0 ml-14 mr-6 bottom-[20%] top-[60%] bg-amber-50/40 z-0 border-b border-amber-200/50 flex items-center justify-end pr-4 pointer-events-none">
+                    <span className="text-[9px] font-bold text-amber-600/50 uppercase tracking-widest">ZONA WASPADA (KURANG)</span>
+                  </div>
+                  <div className="absolute inset-x-0 ml-14 mr-6 bottom-8 top-[80%] bg-rose-50/40 z-0 rounded-b-xl border-t border-rose-200/50 flex items-center justify-end pr-4 pointer-events-none">
+                    <span className="text-[9px] font-bold text-rose-600/50 uppercase tracking-widest">ZONA BAHAYA (BURUK)</span>
+                  </div>
 
                   <div className="absolute inset-0 top-6 bottom-8 flex flex-col justify-between pl-14 pr-6 pointer-events-none z-0">
                     {[...Array(5)].map((_, i) => (
@@ -412,24 +423,44 @@ export default function GrowthMonitoring({ initialChildren = [] }) {
                     ))}
                   </div>
 
-                  <div className="absolute left-2 top-0 bottom-8 flex flex-col justify-between py-4 text-[10px] text-gray-400 font-bold z-10">
+                  <div className="absolute left-2 top-6 bottom-8 flex flex-col justify-between text-[10px] text-gray-400 font-bold z-10">
                     {yLabels.map((lbl, i) => (
-                      <span key={i}>{lbl}</span>
+                      <span key={i}>
+                        {lbl} {i === 0 ? unit : ''}
+                      </span>
                     ))}
                   </div>
 
-                  <div className="relative w-full h-full ml-8 mr-6 px-4 flex items-end pb-2 z-10">
+                  <div className="absolute left-14 right-6 top-6 bottom-8 z-10">
                     <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none">
-                      <path d={svgPath} fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                      <defs>
+                        <linearGradient id="kaderChartGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#059669" stopOpacity="0.25" />
+                          <stop offset="100%" stopColor="#059669" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+                      {svgAreaPath && (
+                        <path d={svgAreaPath} fill="url(#kaderChartGradient)" />
+                      )}
+                      <path d={svgPath} fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ vectorEffect: 'non-scaling-stroke' }} />
                     </svg>
 
                     {chartPoints.map((pt, idx) => (
                       <div key={idx} className="absolute flex flex-col items-center group w-0 h-full" style={{ left: `${pt.x}%` }}>
-                        <div className="absolute top-0 bottom-0 w-px bg-emerald-200 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs px-3 py-2 rounded-lg shadow-xl pointer-events-none z-30 transform -translate-y-8" style={{ bottom: `calc(${pt.cssY}% + 12px)` }}>
-                          <p className="font-bold text-[10px]">{pt.date}</p>
-                          <p className="font-black">{pt.val} {measureType === 'weight' ? 'kg' : 'cm'}</p>
+                        <div className="absolute top-0 bottom-0 w-px bg-emerald-200 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                        <div 
+                          className="absolute opacity-0 group-hover:opacity-100 transition-all duration-200 bg-gray-900 text-white p-3 rounded-xl shadow-2xl pointer-events-none z-30 transform -translate-x-1/2 -translate-y-2 whitespace-nowrap text-center" 
+                          style={{ bottom: `calc(${pt.cssY}% + 16px)` }}
+                        >
+                          <p className="text-[11px] font-bold text-gray-300 mb-1">{pt.formattedDate}</p>
+                          <p className="text-sm font-black">{pt.val} {unit}</p>
                         </div>
+                        
+                        {/* Label Nilai Langsung Di Atas Titik */}
+                        <span className="text-[10px] font-black text-emerald-800 bg-emerald-50/95 border border-emerald-100 rounded-md px-1 py-0.5 shadow-sm absolute transform -translate-x-1/2 -translate-y-5 pointer-events-none z-10" style={{ bottom: `${pt.cssY}%` }}>
+                          {pt.val} {unit}
+                        </span>
+
                         <div 
                           className="absolute w-4 h-4 bg-white border-[4px] border-emerald-600 rounded-full cursor-pointer hover:scale-[1.6] hover:bg-emerald-50 transition-transform shadow-md z-20"
                           style={{ bottom: `calc(${pt.cssY}% - 8px)`, transform: 'translateX(-50%)' }}
