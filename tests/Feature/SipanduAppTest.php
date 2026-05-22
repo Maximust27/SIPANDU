@@ -380,4 +380,99 @@ class SipanduAppTest extends TestCase
             'ticket_code' => 'A-01',
         ]);
     }
+
+    public function test_user_cannot_register_child_without_required_fields(): void
+    {
+        // Try registering child without required birth_date field
+        $response = $this->actingAs($this->pengguna)->post('/anak-pertumbuhan/simpan', [
+            'name' => 'Anak Tanpa Tanggal Lahir',
+            'gender' => 'Laki-laki',
+            // 'birth_date' is missing
+        ]);
+        $response->assertSessionHasErrors(['birth_date']);
+    }
+
+    public function test_measurement_stunting_detection_and_ai_insight(): void
+    {
+        // Create a child born exactly 24 months ago
+        $birthDate = today()->subMonths(24)->toDateString();
+        $child = Child::create([
+            'user_id' => $this->pengguna->id,
+            'posyandu_id' => $this->posyandu->id,
+            'name' => 'Rian Stunted',
+            'gender' => 'Laki-laki',
+            'birth_date' => $birthDate,
+            'mother_name' => $this->pengguna->name,
+            'status' => 'Terverifikasi',
+        ]);
+
+        // Record a measurement with height way below normal for 24 months (e.g., 70 cm)
+        // Standard median at 24 months is 87.8 cm. SD is 3.27 cm.
+        // A height of 70 cm is (70 - 87.8)/3.27 = -5.44 SD (Severely Stunted)
+        $response = $this->actingAs($this->kader)->post("/kader/pemantauan-pertumbuhan/catat/{$child->id}", [
+            'measured_at' => today()->toDateString(),
+            'weight' => 11.0, // Normal weight (median 12.1)
+            'height' => 70.0, // Stunted height
+            'head_circumference' => 45.0,
+            'notes' => 'Pemeriksaan rutin',
+        ]);
+        $response->assertRedirect();
+
+        $this->assertDatabaseHas('measurements', [
+            'child_id' => $child->id,
+            'height' => 70.0,
+            'status_tinggi' => 'Sangat Pendek (Severely Stunted)',
+        ]);
+
+        // Access the user dashboard and check if AI risk is correct
+        $response = $this->actingAs($this->pengguna)->get('/dashboard');
+        $response->assertStatus(200);
+        
+        $dataAnak = $response->original->getData()['page']['props']['dataAnak'];
+        
+        $stuntedChildData = collect($dataAnak)->firstWhere('name', 'Rian Stunted');
+        $this->assertNotNull($stuntedChildData);
+        $this->assertEquals('Berisiko Stunting', $stuntedChildData['ai_risk']);
+        $this->assertStringContainsString('kurva standar WHO (risiko stunting)', $stuntedChildData['ai_insight']);
+    }
+
+    public function test_user_cannot_take_duplicate_queue_ticket(): void
+    {
+        $child = Child::create([
+            'user_id' => $this->pengguna->id,
+            'posyandu_id' => $this->posyandu->id,
+            'name' => 'Bayu Dua',
+            'gender' => 'Laki-laki',
+            'birth_date' => '2024-02-20',
+            'mother_name' => $this->pengguna->name,
+            'status' => 'Terverifikasi',
+        ]);
+
+        $schedule = Schedule::create([
+            'posyandu_id' => $this->posyandu->id,
+            'kader_id' => $this->kader->id,
+            'scheduled_date' => today()->addDays(2),
+            'time_start' => '08:00',
+            'time_end' => '10:00',
+            'agenda' => 'Imunisasi BCG',
+            'status' => 'upcoming',
+        ]);
+
+        // Take first queue ticket
+        $response = $this->actingAs($this->pengguna)->post('/imunisasi-jadwal/antrian', [
+            'schedule_id' => $schedule->id,
+            'child_id' => $child->id,
+            'agenda' => 'Imunisasi BCG',
+        ]);
+        $response->assertRedirect();
+
+        // Attempt to take duplicate queue ticket
+        $response = $this->actingAs($this->pengguna)->post('/imunisasi-jadwal/antrian', [
+            'schedule_id' => $schedule->id,
+            'child_id' => $child->id,
+            'agenda' => 'Imunisasi BCG',
+        ]);
+        $response->assertRedirect();
+        $response->assertSessionHas('error');
+    }
 }
