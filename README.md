@@ -1,59 +1,77 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# SIPANDU — Community Health and Child Growth Platform
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A Laravel + Inertia + React application for community health-center workflows.
 
-## About Laravel
+**Public demo:** Not currently provided. Review the code on GitHub or follow the local setup instructions below. This repository is a portfolio project, not a claim of production deployment.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## What it demonstrates
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+| Area | Evidence in source code |
+| --- | --- |
+| Role-specific areas | User, kader (health volunteer), and admin routes with role middleware (`routes/web.php`) |
+| Child records and growth | Child registration and measurement handling (`app/Http/Controllers/User/ChildController.php`) |
+| Vaccination/queues | Immunization queue and scheduling flows (`app/Http/Controllers/User/ImmunizationController.php`, `app/Http/Controllers/Kader/ScheduleQueueController.php`) |
+| Administration | User and health-center management controllers (`app/Http/Controllers/Admin`) |
+| Tests | A dedicated feature test file covering role access and CRUD (`tests/Feature/SipanduAppTest.php`) |
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Stack
 
-## Learning Laravel
+PHP, Laravel 12, Inertia.js, React 18, Vite, Tailwind CSS, Eloquent, PHPUnit
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Architecture
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```text
+Browser
+  -> UI (React/Inertia or Blade/Livewire, depending on this project)
+  -> Laravel routes / middleware
+  -> Controllers or Livewire components
+  -> Eloquent models and database
+```
 
-## Laravel Sponsors
+Refer to `routes/web.php` and `app/` for this project's implementation details.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Local development
 
-### Premium Partners
+Requirements: a compatible PHP/Composer environment, Node.js/npm, and a database configured for Laravel.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+```bash
+git clone https://github.com/Maximust27/SIPANDU.git
+cd SIPANDU
+composer install
+npm install
+cp .env.example .env
+php artisan key:generate
+```
 
-## Contributing
+Configure your `.env` database settings and run:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+php artisan migrate
+php artisan serve
+```
 
-## Code of Conduct
+In another terminal run `npm run dev`. Run tests with `php artisan test` and check production asset compilation using `npm run build`.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+**Verification:** These commands are a standard starting point, not evidence that this repository was installed or tested during this documentation change. Project-specific seed data or configuration may be needed. Do not commit secrets or real personal data.
 
-## Security Vulnerabilities
+## Source code walkthrough
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+- [`routes/web.php`](./routes/web.php)
+- [`app/Http/Controllers/User/ChildController.php`](./app/Http/Controllers/User/ChildController.php)
+- [`app/Http/Controllers/Kader/ScheduleQueueController.php`](./app/Http/Controllers/Kader/ScheduleQueueController.php)
+- [`tests/Feature/SipanduAppTest.php`](./tests/Feature/SipanduAppTest.php)
 
-## License
+Read [PORTFOLIO_CASE_STUDY.md](./docs/PORTFOLIO_CASE_STUDY.md) for engineering decisions, current limitations, and proposed verification tasks.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Engineering next steps
+
+- Healthcare-oriented data deserves special care: use fictitious demo records, test authorization across all roles, avoid putting personal patient information in screenshots, and validate input and role ownership rules.
+- Run `php artisan test` for the existing feature tests, then expand to negative cases for user/child ownership and queue edge cases.
+- Capture screenshots using fictional sample data and record a short walkthrough.
+- Add a verified demo and reproducible setup instructions when available.
+
+## Recruiter note
+
+The documentation describes code that is visible in this repository. It does **not** claim real deployments, production users, validated performance gains, or a completed security assessment. Any team contribution should be described accurately before including it on a CV.
+
+**Maintained by:** [@Maximust27](https://github.com/Maximust27) · [Portfolio](https://maximust27.github.io/)
